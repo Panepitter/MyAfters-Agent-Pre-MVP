@@ -20,6 +20,9 @@ const profileLng = document.getElementById('profileLng');
 const profileMap = document.getElementById('profileMap');
 const searchBtn = document.getElementById('searchBtn');
 const geoBtn = document.getElementById('geoBtn');
+const profileNameEl = document.getElementById('profileName');
+const profileSurnameEl = document.getElementById('profileSurname');
+const profilePhoneEl = document.getElementById('profilePhone');
 const genreChips = document.querySelectorAll('.cp-genre-chip');
 const budgetMinEl = document.getElementById('budgetMin');
 const budgetMaxEl = document.getElementById('budgetMax');
@@ -35,6 +38,9 @@ let hasInjectedProfile = false;
 let mapInstance = null;
 let mapMarker = null;
 const profileState = {
+  name: '',
+  surname: '',
+  phone: '',
   address: '',
   lat: null,
   lng: null,
@@ -123,11 +129,15 @@ const buildUserInfoPrefix = () => {
     ? `${profileState.budgetMin || '—'}-${profileState.budgetMax || '—'}€`
     : null;
   const party = profileState.partySize ? `${profileState.partySize} persone` : null;
+  const personInfo = [profileState.name, profileState.surname].filter(Boolean).join(' ').trim();
+  const phoneInfo = profileState.phone ? `tel: ${profileState.phone}` : null;
+  const personal = [personInfo || null, phoneInfo].filter(Boolean).join(', ');
   const extra = [budget ? `budget: ${budget}` : null, party ? `gruppo: ${party}` : null]
     .filter(Boolean)
     .join(', ');
   const extraText = extra ? `, ${extra}` : '';
-  return `INFO UTENTE: posizione ${address} (coordinate: ${coords}), preferenze generi musicali: ${genres}${extraText}.\n\n`;
+  const personalText = personal ? `, contatto: ${personal}` : '';
+  return `INFO UTENTE: posizione ${address} (coordinate: ${coords}), preferenze generi musicali: ${genres}${personalText}${extraText}.\n\n`;
 };
 
 const updateProfileSummary = (persist = false) => {
@@ -171,6 +181,9 @@ const loadProfile = () => {
     if (!saved) return;
     const parsed = JSON.parse(saved);
     if (!parsed || typeof parsed !== 'object') return;
+    profileState.name = parsed.name || '';
+    profileState.surname = parsed.surname || '';
+    profileState.phone = parsed.phone || '';
     profileState.address = parsed.address || '';
     profileState.lat = parsed.lat ?? null;
     profileState.lng = parsed.lng ?? null;
@@ -179,6 +192,9 @@ const loadProfile = () => {
     profileState.budgetMax = parsed.budgetMax ?? null;
     profileState.partySize = parsed.partySize ?? null;
 
+    profileNameEl.value = profileState.name || '';
+    profileSurnameEl.value = profileState.surname || '';
+    profilePhoneEl.value = profileState.phone || '';
     profileAddress.value = profileState.address || '';
     budgetMinEl.value = profileState.budgetMin ?? '';
     budgetMaxEl.value = profileState.budgetMax ?? '';
@@ -551,6 +567,9 @@ const resizeTextarea = () => {
 };
 
 const syncProfileState = () => {
+  profileState.name = profileNameEl.value.trim();
+  profileState.surname = profileSurnameEl.value.trim();
+  profileState.phone = profilePhoneEl.value.trim();
   profileState.address = profileAddress.value.trim();
   profileState.budgetMin = budgetMinEl.value ? Number(budgetMinEl.value) : null;
   profileState.budgetMax = budgetMaxEl.value ? Number(budgetMaxEl.value) : null;
@@ -590,7 +609,9 @@ profileToggle.addEventListener('click', () => {
   }
 });
 
-profileAddress.addEventListener('input', syncProfileState);
+[profileNameEl, profileSurnameEl, profilePhoneEl, profileAddress].forEach((el) => {
+  el.addEventListener('input', syncProfileState);
+});
 
 [budgetMinEl, budgetMaxEl, partySizeEl].forEach((el) => {
   el.addEventListener('input', syncProfileState);
