@@ -58,20 +58,22 @@ const renderReservation = (payload) => {
         type: 'dots',
         gradient: {
           type: 'linear',
-          rotation: 0,
+          rotation: 0.8,
           colorStops: [
-            { offset: 0, color: '#6366f1' },
-            { offset: 1, color: '#0b0b10' }
+            { offset: 0, color: '#7c3aed' },
+            { offset: 0.35, color: '#ec4899' },
+            { offset: 0.7, color: '#22d3ee' },
+            { offset: 1, color: '#22c55e' }
           ]
         }
       },
       cornersSquareOptions: {
         type: 'extra-rounded',
-        color: '#8b5cf6'
+        color: '#c084fc'
       },
       cornersDotOptions: {
         type: 'dot',
-        color: '#c7d2fe'
+        color: '#38bdf8'
       },
       backgroundOptions: {
         color: 'transparent'

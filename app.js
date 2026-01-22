@@ -85,6 +85,19 @@ const renderMessages = () => {
       bubble.textContent = msg.content;
     }
     messagesEl.appendChild(bubble);
+
+    if (hasOverlay) {
+      const trigger = bubble.querySelector('.cp-overlay-trigger');
+      const overlay = bubble.querySelector('.cp-message-overlay');
+      if (trigger && overlay) {
+        const show = () => overlay.classList.add('visible');
+        const hide = () => overlay.classList.remove('visible');
+        trigger.addEventListener('mouseenter', show);
+        trigger.addEventListener('mouseleave', hide);
+        overlay.addEventListener('mouseenter', show);
+        overlay.addEventListener('mouseleave', hide);
+      }
+    }
   });
 
   if (isThinking) {
@@ -115,20 +128,22 @@ const buildGradientQr = (element, text, size = 120) => {
       type: 'dots',
       gradient: {
         type: 'linear',
-        rotation: 0,
+        rotation: 0.8,
         colorStops: [
-          { offset: 0, color: '#6366f1' },
-          { offset: 1, color: '#0b0b10' }
+          { offset: 0, color: '#7c3aed' },
+          { offset: 0.35, color: '#ec4899' },
+          { offset: 0.7, color: '#22d3ee' },
+          { offset: 1, color: '#22c55e' }
         ]
       }
     },
     cornersSquareOptions: {
       type: 'extra-rounded',
-      color: '#8b5cf6'
+      color: '#c084fc'
     },
     cornersDotOptions: {
       type: 'dot',
-      color: '#c7d2fe'
+      color: '#38bdf8'
     },
     backgroundOptions: {
       color: 'transparent'
@@ -476,31 +491,36 @@ const buildReservationOverlayHtml = (payload) => {
   const venueInfo = reservation.venue_id ? `Locale #${reservation.venue_id}` : 'Locale selezionato';
   const reservationUrl = payload.reservation_url || '#';
   const hostPasscode = payload.host_passcode ? `Codice creator: ${payload.host_passcode}` : '';
+  const tableLabel = reservation.table_number || '—';
 
-  return `
-    <div class="cp-message-overlay">
-      <a class="cp-reservation-bubble" href="${reservationUrl}" target="_blank" rel="noopener">
-        <div class="cp-bubble-header">
-          <div>
-            <div class="cp-widget-title">Prenotazione ${status}</div>
-            <div class="cp-widget-subtitle">${venueInfo} · ${date}</div>
+  return {
+    html: `
+      <div class="cp-message-overlay">
+        <a class="cp-reservation-bubble" href="${reservationUrl}" target="_blank" rel="noopener">
+          <div class="cp-bubble-header">
+            <div>
+              <div class="cp-widget-title">Prenotazione ${status}</div>
+              <div class="cp-widget-subtitle">${venueInfo} · ${date}</div>
+            </div>
+            <div class="cp-widget-subtitle">Tavolo ${tableLabel}</div>
           </div>
-          <div class="cp-widget-subtitle">Tavolo ${reservation.table_number || '—'}</div>
-        </div>
-        <div class="cp-reservation-card">
-          <div class="cp-reservation-details">
-            <strong>${reservation.user_name || 'Ospite'}</strong>
-            <span>Telefono: ${reservation.user_phone || '—'}</span>
-            <span>Persone: ${reservation.party_size || '—'}</span>
-            <span>ID prenotazione: ${reservation.id || '—'}</span>
-            ${hostPasscode ? `<span class=\"cp-reservation-pass\">${hostPasscode}</span>` : ''}
-            <span class="cp-reservation-link">Apri gestione prenotazione →</span>
+          <div class="cp-reservation-card">
+            <div class="cp-reservation-details">
+              <strong>${reservation.user_name || 'Ospite'}</strong>
+              <span>Telefono: ${reservation.user_phone || '—'}</span>
+              <span>Persone: ${reservation.party_size || '—'}</span>
+              <span>ID prenotazione: ${reservation.id || '—'}</span>
+              ${hostPasscode ? `<span class=\"cp-reservation-pass\">${hostPasscode}</span>` : ''}
+              <span class="cp-reservation-link">Apri gestione prenotazione →</span>
+            </div>
+            <div class="cp-qr cp-qr-branded" data-qr="${payload.guest_url || ''}" data-qr-size="120"></div>
           </div>
-          <div class="cp-qr cp-qr-branded" data-qr="${payload.guest_url || ''}" data-qr-size="120"></div>
-        </div>
-      </a>
-    </div>
-  `;
+        </a>
+      </div>
+    `,
+    reservationUrl,
+    tableLabel
+  };
 };
 
 const buildUberEmbedHtml = (payload) => {
@@ -535,7 +555,8 @@ const stripLongLinks = (text) => {
 
 const handleAgentResponse = (data) => {
   const widgetPayloads = [];
-  let reservationOverlayHtml = null;
+  let reservationOverlay = null;
+  let reservationTrigger = '';
 
   if (Array.isArray(data.messages)) {
     const startIndex = Math.min(lastServerMessageCount, data.messages.length);
@@ -555,7 +576,8 @@ const handleAgentResponse = (data) => {
       lastVenuePayload = payload;
     }
     if (payload.type === 'reservation_card') {
-      reservationOverlayHtml = buildReservationOverlayHtml(payload);
+      reservationOverlay = buildReservationOverlayHtml(payload);
+      reservationTrigger = `Tavolo ${reservationOverlay.tableLabel}`;
       return;
     }
     const html = renderWidget(payload);
@@ -564,12 +586,18 @@ const handleAgentResponse = (data) => {
 
   const responseText = typeof data.response === 'string' ? data.response.trim() : '';
   const safeResponse = stripLongLinks(responseText);
+  const triggerHtml = reservationOverlay
+    ? `<a class="cp-overlay-trigger" href="${reservationOverlay.reservationUrl}" target="_blank" rel="noopener">${reservationTrigger}</a>`
+    : '';
+  const combinedText = safeResponse
+    ? `${safeResponse}${triggerHtml ? '<br/>' + triggerHtml : ''}`
+    : triggerHtml;
 
-  if (safeResponse || reservationOverlayHtml) {
+  if (combinedText || reservationOverlay) {
     messages.push({
       role: 'assistant',
-      content: safeResponse || '',
-      overlayHtml: reservationOverlayHtml
+      content: combinedText || '',
+      overlayHtml: reservationOverlay ? reservationOverlay.html : null
     });
   } else if (widgetPayloads.length === 0) {
     messages.push({ role: 'assistant', content: '✅ Richiesta completata.' });
