@@ -3,8 +3,8 @@ from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg.rows import dict_row
 
 ROOT_DIR = Path(__file__).resolve().parent
 DATABASE_URL = os.getenv("MYAFTERS_DB_URL") or "postgresql://postgres:fuGyBvVPHoWRkWGUlsPaJbUedICNjpWm@shinkansen.proxy.rlwy.net:45313/railway"
@@ -15,7 +15,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 
 def _get_conn():
-    return psycopg2.connect(DATABASE_URL)
+    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
 
 
 def _serialize(row):
@@ -73,7 +73,7 @@ def _find_by_token(cur, token):
 @app.route("/api/reservations/<token>", methods=["GET"])
 def get_reservation(token):
     conn = _get_conn()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur = conn.cursor()
     row = _find_by_token(cur, token)
     cur.close()
     conn.close()
@@ -99,7 +99,7 @@ def get_reservation(token):
 @app.route("/api/reservations/<token>/accept", methods=["POST"])
 def accept_reservation(token):
     conn = _get_conn()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur = conn.cursor()
     row = _find_by_token(cur, token)
     if not row or token != row.get("host_token"):
         cur.close()
@@ -131,7 +131,7 @@ def accept_reservation(token):
 @app.route("/api/reservations/<token>/reject", methods=["POST"])
 def reject_reservation(token):
     conn = _get_conn()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur = conn.cursor()
     row = _find_by_token(cur, token)
     if not row or token != row.get("host_token"):
         cur.close()
