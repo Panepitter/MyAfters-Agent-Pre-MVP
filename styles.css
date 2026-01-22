@@ -201,6 +201,13 @@ body::-webkit-scrollbar {
   background: rgba(255, 255, 255, 0.03);
   color: var(--cp-text-main);
   line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.cp-message a {
+  color: #c7d2fe;
+  text-decoration: underline;
+  word-break: break-all;
 }
 
 .cp-message.user {

@@ -46,7 +46,41 @@ const renderReservation = (payload) => {
     ${accessLine}
   `;
 
-  qrWrapper.innerHTML = payload.qrcode_url ? `<img src="${payload.qrcode_url}" alt="QR Code" />` : 'QR non disponibile';
+  if (payload.guest_url && window.QRCodeStyling) {
+    qrWrapper.innerHTML = '';
+    const qr = new QRCodeStyling({
+      width: 240,
+      height: 240,
+      type: 'svg',
+      data: payload.guest_url,
+      margin: 0,
+      dotsOptions: {
+        type: 'dots',
+        gradient: {
+          type: 'linear',
+          rotation: 0,
+          colorStops: [
+            { offset: 0, color: '#6366f1' },
+            { offset: 1, color: '#0b0b10' }
+          ]
+        }
+      },
+      cornersSquareOptions: {
+        type: 'extra-rounded',
+        color: '#8b5cf6'
+      },
+      cornersDotOptions: {
+        type: 'dot',
+        color: '#c7d2fe'
+      },
+      backgroundOptions: {
+        color: 'transparent'
+      }
+    });
+    qr.append(qrWrapper);
+  } else {
+    qrWrapper.innerHTML = payload.qrcode_url ? `<img src="${payload.qrcode_url}" alt="QR Code" />` : 'QR non disponibile';
+  }
   if (payload.guest_url) {
     guestLink.innerHTML = `Link ospiti: <a href="${payload.guest_url}" target="_blank" rel="noopener">${payload.guest_url}</a>`;
   }

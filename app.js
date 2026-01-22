@@ -96,9 +96,60 @@ const renderMessages = () => {
 
   messageCountEl.textContent = String(messages.length);
   messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  enhanceQrCodes();
 };
 
 const DEFAULT_CENTER = { lat: 45.4642, lng: 9.19 };
+
+const buildGradientQr = (element, text, size = 120) => {
+  if (!window.QRCodeStyling || !element || !text) return false;
+  element.innerHTML = '';
+  const qr = new QRCodeStyling({
+    width: size,
+    height: size,
+    type: 'svg',
+    data: text,
+    margin: 0,
+    dotsOptions: {
+      type: 'dots',
+      gradient: {
+        type: 'linear',
+        rotation: 0,
+        colorStops: [
+          { offset: 0, color: '#6366f1' },
+          { offset: 1, color: '#0b0b10' }
+        ]
+      }
+    },
+    cornersSquareOptions: {
+      type: 'extra-rounded',
+      color: '#8b5cf6'
+    },
+    cornersDotOptions: {
+      type: 'dot',
+      color: '#c7d2fe'
+    },
+    backgroundOptions: {
+      color: 'transparent'
+    }
+  });
+  qr.append(element);
+  return true;
+};
+
+const enhanceQrCodes = () => {
+  const nodes = document.querySelectorAll('[data-qr]');
+  nodes.forEach((node) => {
+    const text = node.dataset.qr;
+    const size = Number(node.dataset.qrSize) || 120;
+    if (!text || node.dataset.qrReady === 'true') return;
+    const rendered = buildGradientQr(node, text, size);
+    if (rendered) {
+      node.dataset.qrReady = 'true';
+    }
+  });
+};
 
 const setActiveTab = (tabName) => {
   tabButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === tabName));
@@ -445,9 +496,7 @@ const buildReservationOverlayHtml = (payload) => {
             ${hostPasscode ? `<span class=\"cp-reservation-pass\">${hostPasscode}</span>` : ''}
             <span class="cp-reservation-link">Apri gestione prenotazione →</span>
           </div>
-          <div class="cp-qr cp-qr-branded">
-            <img src="${payload.qrcode_url || ''}" alt="QR Code" />
-          </div>
+          <div class="cp-qr cp-qr-branded" data-qr="${payload.guest_url || ''}" data-qr-size="120"></div>
         </div>
       </a>
     </div>
@@ -474,6 +523,14 @@ const renderWidget = (payload) => {
   if (payload.type === 'venue_grid') return buildVenueGridHtml(payload);
   if (payload.type === 'uber_embed') return buildUberEmbedHtml(payload);
   return null;
+};
+
+const stripLongLinks = (text) => {
+  if (!text) return '';
+  return text.replace(/https?:\/\/\S+/g, (match) => {
+    if (match.length > 35) return 'link disponibile nel widget';
+    return match;
+  });
 };
 
 const handleAgentResponse = (data) => {
@@ -506,11 +563,12 @@ const handleAgentResponse = (data) => {
   });
 
   const responseText = typeof data.response === 'string' ? data.response.trim() : '';
+  const safeResponse = stripLongLinks(responseText);
 
-  if (responseText || reservationOverlayHtml) {
+  if (safeResponse || reservationOverlayHtml) {
     messages.push({
       role: 'assistant',
-      content: responseText || '',
+      content: safeResponse || '',
       overlayHtml: reservationOverlayHtml
     });
   } else if (widgetPayloads.length === 0) {
