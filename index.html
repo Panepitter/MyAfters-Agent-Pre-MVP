@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyAfters - Agent</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="cp-background">
+    <div class="cp-glow cp-glow-left"></div>
+    <div class="cp-glow cp-glow-right"></div>
+  </div>
+
+  <main class="cp-shell">
+    <header class="cp-header">
+      <div class="cp-brand">
+        <div class="cp-icon">⚡</div>
+        <div>
+          <div class="cp-title">MyAfters <span>Agent</span></div>
+          <div class="cp-status"><span class="cp-dot"></span> Online · Serata perfetta</div>
+        </div>
+      </div>
+      <div class="cp-header-actions">
+        <button class="cp-ghost" id="clearBtn">Reset</button>
+      </div>
+    </header>
+
+    <section class="cp-dashboard">
+      <div class="cp-stat">
+        <span class="cp-stat-label">Sessione</span>
+        <span class="cp-stat-value" id="sessionId">—</span>
+      </div>
+      <div class="cp-stat">
+        <span class="cp-stat-label">Messaggi</span>
+        <span class="cp-stat-value" id="messageCount">0</span>
+      </div>
+      <div class="cp-stat">
+        <span class="cp-stat-label">Agente</span>
+        <span class="cp-stat-value">MyAfters - Agent</span>
+      </div>
+    </section>
+
+    <section class="cp-tabs">
+      <button class="cp-tab active" data-tab="chat">Chat</button>
+      <button class="cp-tab" data-tab="profile">Profilo</button>
+    </section>
+
+    <section class="cp-panel cp-panel-chat" id="chatPanel">
+      <section class="cp-messages" id="messages"></section>
+
+      <section class="cp-input">
+        <div class="cp-quick">
+          <button data-prompt="Suggeriscimi i migliori locali vicino a me" class="cp-quick-btn">Top locali vicino a me</button>
+          <button data-prompt="Cerco un club house con budget 30€" class="cp-quick-btn">Club house 30€</button>
+          <button data-prompt="Prenota un tavolo per 4 persone sabato sera" class="cp-quick-btn">Prenota tavolo</button>
+        </div>
+        <div class="cp-input-row">
+          <textarea id="userInput" rows="1" placeholder="Scrivi un messaggio..."></textarea>
+          <button id="sendBtn" class="cp-send">Invia</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="cp-panel cp-panel-profile" id="profilePanel" hidden>
+      <div class="cp-profile-card" id="profileCard">
+        <div class="cp-profile-header" id="profileToggle">
+          <div>
+            <div class="cp-profile-title">Scheda profilo serata</div>
+            <div class="cp-profile-subtitle" id="profileSummary">Completa i campi richiesti per iniziare.</div>
+          </div>
+          <button class="cp-ghost cp-collapse-btn" type="button">Comprimi</button>
+        </div>
+        <div class="cp-profile-body" id="profileBody">
+          <div class="cp-profile-grid">
+            <div class="cp-profile-block">
+              <div class="cp-profile-label">Posizione (obbligatoria)</div>
+              <div class="cp-input-group cp-input-group-map">
+                <input id="profileAddress" type="text" placeholder="Cerca indirizzo o zona..." />
+                <button class="cp-action-btn" id="searchBtn" type="button">Cerca</button>
+                <button class="cp-action-btn" id="geoBtn" type="button">Usa posizione attuale</button>
+              </div>
+              <div class="cp-map" id="profileMap">
+                <div class="cp-map-overlay">Clicca sulla mappa per scegliere</div>
+              </div>
+              <div class="cp-coords">
+                <div>
+                  <label>Lat</label>
+                  <input id="profileLat" type="number" step="0.0001" placeholder="Lat" />
+                </div>
+                <div>
+                  <label>Lng</label>
+                  <input id="profileLng" type="number" step="0.0001" placeholder="Lng" />
+                </div>
+              </div>
+            </div>
+
+            <div class="cp-profile-block">
+              <div class="cp-profile-label">Generi musicali preferiti (obbligatori)</div>
+              <div class="cp-genre-grid" id="genreChips">
+                <button class="cp-genre-chip" data-genre="house">House</button>
+                <button class="cp-genre-chip" data-genre="techno">Techno</button>
+                <button class="cp-genre-chip" data-genre="edm">EDM</button>
+                <button class="cp-genre-chip" data-genre="hip-hop">Hip-Hop</button>
+                <button class="cp-genre-chip" data-genre="afrobeats">Afrobeats</button>
+                <button class="cp-genre-chip" data-genre="rnb">R&B</button>
+                <button class="cp-genre-chip" data-genre="jazz">Jazz</button>
+                <button class="cp-genre-chip" data-genre="latin">Latin</button>
+              </div>
+
+              <div class="cp-profile-label">Dettagli extra (opzionali)</div>
+              <div class="cp-input-group cp-input-group-three">
+                <input id="budgetMin" type="number" placeholder="Budget min (€)" />
+                <input id="budgetMax" type="number" placeholder="Budget max (€)" />
+                <input id="partySize" type="number" placeholder="Persone" />
+              </div>
+            </div>
+          </div>
+
+          <div class="cp-profile-actions">
+            <button class="cp-send" id="saveProfileBtn" type="button">Salva profilo</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="marked.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

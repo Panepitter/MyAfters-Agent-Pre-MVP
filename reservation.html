@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyAfters · Prenotazione Tavolo</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="cp-background">
+    <div class="cp-glow cp-glow-left"></div>
+    <div class="cp-glow cp-glow-right"></div>
+  </div>
+
+  <main class="cp-shell cp-reservation-shell">
+    <header class="cp-header">
+      <div class="cp-brand">
+        <div class="cp-icon">✨</div>
+        <div>
+          <div class="cp-title">MyAfters <span>Reservation</span></div>
+          <div class="cp-status"><span class="cp-dot"></span> Tavolo live</div>
+        </div>
+      </div>
+      <div class="cp-header-actions">
+        <a href="index.html" class="cp-ghost">Torna alla chat</a>
+      </div>
+    </header>
+
+    <section class="cp-panel cp-panel-profile cp-reservation-panel">
+      <div class="cp-profile-card" id="reservationCard">
+        <div class="cp-profile-header">
+          <div>
+            <div class="cp-profile-title" id="reservationTitle">Prenotazione tavolo</div>
+            <div class="cp-profile-subtitle" id="reservationSubtitle">Caricamento dettagli...</div>
+          </div>
+          <span class="cp-status-pill" id="reservationStatus">—</span>
+        </div>
+
+        <div class="cp-profile-body">
+          <div class="cp-profile-grid">
+            <div class="cp-profile-block">
+              <div class="cp-profile-label">Dettagli tavolo</div>
+              <div class="cp-reservation-details" id="reservationDetails"></div>
+            </div>
+            <div class="cp-profile-block">
+              <div class="cp-profile-label">QR code accesso ospiti</div>
+              <div class="cp-qr cp-reservation-qr" id="qrWrapper"></div>
+              <div class="cp-reservation-link" id="guestLink"></div>
+            </div>
+          </div>
+
+          <div class="cp-profile-actions" id="hostActions" hidden>
+            <button class="cp-send" id="acceptBtn">Accetta accesso</button>
+            <button class="cp-ghost" id="rejectBtn">Rifiuta accesso</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="reservation.js"></script>
+</body>
+</html>
