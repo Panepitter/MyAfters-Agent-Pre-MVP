@@ -18,6 +18,10 @@ def _get_conn():
     return psycopg.connect(DATABASE_URL, row_factory=dict_row)
 
 
+def _ensure_columns(cur):
+    cur.execute("ALTER TABLE reservations ADD COLUMN IF NOT EXISTS host_passcode TEXT")
+
+
 def _serialize(row):
     if not row:
         return None
@@ -46,13 +50,13 @@ def _build_urls(host_token, guest_token):
 def _build_qr_url(payload):
     import urllib.parse
 
-    base = "https://api.qrserver.com/v1/create-qr-code/"
+    base = "https://quickchart.io/qr"
     params = {
-        "size": "240x240",
-        "data": payload,
-        "color": "6366f1",
-        "bgcolor": "0b0b10",
-        "margin": "1",
+        "text": payload,
+        "size": 280,
+        "dark": "6366f1",
+        "light": "0b0b10",
+        "margin": 2,
     }
     return f"{base}?{urllib.parse.urlencode(params)}"
 
@@ -74,34 +78,56 @@ def _find_by_token(cur, token):
 def get_reservation(token):
     conn = _get_conn()
     cur = conn.cursor()
+    _ensure_columns(cur)
     row = _find_by_token(cur, token)
+
+    if not row:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Reservation not found"}), 404
+
+    passcode = request.args.get("passcode") or ""
+    is_host_token = token == row.get("host_token")
+    host_passcode = row.get("host_passcode")
+
+    if is_host_token and not host_passcode:
+        host_passcode = f"{os.urandom(3).hex()}"
+        cur.execute("UPDATE reservations SET host_passcode = %s WHERE id = %s", (host_passcode, row["id"]))
+        conn.commit()
+        row["host_passcode"] = host_passcode
+
+    is_host = is_host_token and host_passcode and passcode == host_passcode
+    role = "host" if is_host else "guest"
+    requires_passcode = bool(is_host_token and host_passcode and passcode != host_passcode)
+
+    host_url, guest_url = _build_urls(row.get("host_token"), row.get("guest_token"))
+
     cur.close()
     conn.close()
 
-    if not row:
-        return jsonify({"error": "Reservation not found"}), 404
+    response = {
+        "reservation": _serialize(row),
+        "status": row.get("status") or "pending",
+        "role": role,
+        "reservation_url": host_url,
+        "guest_url": guest_url,
+        "qrcode_url": _build_qr_url(guest_url),
+        "requires_passcode": requires_passcode,
+    }
+    if is_host:
+        response["host_passcode"] = host_passcode
 
-    role = "host" if token == row.get("host_token") else "guest"
-    host_url, guest_url = _build_urls(row.get("host_token"), row.get("guest_token"))
-
-    return jsonify(
-        {
-            "reservation": _serialize(row),
-            "status": row.get("status") or "pending",
-            "role": role,
-            "reservation_url": host_url,
-            "guest_url": guest_url,
-            "qrcode_url": _build_qr_url(guest_url),
-        }
-    )
+    return jsonify(response)
 
 
 @app.route("/api/reservations/<token>/accept", methods=["POST"])
 def accept_reservation(token):
     conn = _get_conn()
     cur = conn.cursor()
+    _ensure_columns(cur)
     row = _find_by_token(cur, token)
-    if not row or token != row.get("host_token"):
+    passcode = request.args.get("passcode") or ""
+    if not row or token != row.get("host_token") or (row.get("host_passcode") and passcode != row.get("host_passcode")):
         cur.close()
         conn.close()
         return jsonify({"error": "Unauthorized"}), 403
@@ -132,8 +158,10 @@ def accept_reservation(token):
 def reject_reservation(token):
     conn = _get_conn()
     cur = conn.cursor()
+    _ensure_columns(cur)
     row = _find_by_token(cur, token)
-    if not row or token != row.get("host_token"):
+    passcode = request.args.get("passcode") or ""
+    if not row or token != row.get("host_token") or (row.get("host_passcode") and passcode != row.get("host_passcode")):
         cur.close()
         conn.close()
         return jsonify({"error": "Unauthorized"}), 403

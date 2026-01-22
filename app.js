@@ -60,11 +60,21 @@ const renderMessages = () => {
   messages.forEach((msg) => {
     const bubble = document.createElement('div');
     const isWidget = msg.isHtml;
-    bubble.className = `cp-message ${msg.role}${isWidget ? ' widget' : ''}`;
+    const hasOverlay = Boolean(msg.overlayHtml);
+    bubble.className = `cp-message ${msg.role}${isWidget ? ' widget' : ''}${hasOverlay ? ' with-overlay' : ''}`;
+
     if (isWidget) {
       bubble.innerHTML = msg.content;
     } else if (msg.role === 'assistant') {
-      bubble.innerHTML = renderMarkdown(msg.content);
+      const textHtml = msg.content ? renderMarkdown(msg.content) : '';
+      if (hasOverlay) {
+        bubble.innerHTML = `
+          <div class="cp-message-text">${textHtml}</div>
+          ${msg.overlayHtml}
+        `;
+      } else {
+        bubble.innerHTML = textHtml;
+      }
     } else {
       bubble.textContent = msg.content;
     }
@@ -392,15 +402,16 @@ const buildVenueGridHtml = (payload) => {
   `;
 };
 
-const buildReservationHtml = (payload) => {
+const buildReservationOverlayHtml = (payload) => {
   const reservation = payload.reservation || {};
   const status = payload.status || reservation.status || 'pending';
   const date = reservation.reservation_datetime ? new Date(reservation.reservation_datetime).toLocaleString('it-IT') : '—';
   const venueInfo = reservation.venue_id ? `Locale #${reservation.venue_id}` : 'Locale selezionato';
   const reservationUrl = payload.reservation_url || '#';
+  const hostPasscode = payload.host_passcode ? `Codice creator: ${payload.host_passcode}` : '';
 
   return `
-    <div class="cp-widget cp-reservation-widget">
+    <div class="cp-message-overlay">
       <a class="cp-reservation-bubble" href="${reservationUrl}" target="_blank" rel="noopener">
         <div class="cp-bubble-header">
           <div>
@@ -415,9 +426,10 @@ const buildReservationHtml = (payload) => {
             <span>Telefono: ${reservation.user_phone || '—'}</span>
             <span>Persone: ${reservation.party_size || '—'}</span>
             <span>ID prenotazione: ${reservation.id || '—'}</span>
+            ${hostPasscode ? `<span class=\"cp-reservation-pass\">${hostPasscode}</span>` : ''}
             <span class="cp-reservation-link">Apri gestione prenotazione →</span>
           </div>
-          <div class="cp-qr">
+          <div class="cp-qr cp-qr-branded">
             <img src="${payload.qrcode_url || ''}" alt="QR Code" />
           </div>
         </div>
@@ -445,12 +457,12 @@ const renderWidget = (payload) => {
   if (!payload) return null;
   if (payload.type === 'venue_grid') return buildVenueGridHtml(payload);
   if (payload.type === 'uber_embed') return buildUberEmbedHtml(payload);
-  if (payload.type === 'reservation_card') return buildReservationHtml(payload);
   return null;
 };
 
 const handleAgentResponse = (data) => {
   const widgetPayloads = [];
+  let reservationOverlayHtml = null;
 
   if (Array.isArray(data.messages)) {
     const startIndex = Math.min(lastServerMessageCount, data.messages.length);
@@ -469,14 +481,22 @@ const handleAgentResponse = (data) => {
     if (payload.type === 'venue_grid') {
       lastVenuePayload = payload;
     }
+    if (payload.type === 'reservation_card') {
+      reservationOverlayHtml = buildReservationOverlayHtml(payload);
+      return;
+    }
     const html = renderWidget(payload);
     if (html) messages.push({ role: 'assistant', content: html, isHtml: true });
   });
 
   const responseText = typeof data.response === 'string' ? data.response.trim() : '';
 
-  if (responseText) {
-    messages.push({ role: 'assistant', content: responseText });
+  if (responseText || reservationOverlayHtml) {
+    messages.push({
+      role: 'assistant',
+      content: responseText || '',
+      overlayHtml: reservationOverlayHtml
+    });
   } else if (widgetPayloads.length === 0) {
     messages.push({ role: 'assistant', content: '✅ Richiesta completata.' });
   }

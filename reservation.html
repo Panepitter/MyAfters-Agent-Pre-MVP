@@ -47,7 +47,7 @@
             </div>
             <div class="cp-profile-block">
               <div class="cp-profile-label">QR code accesso ospiti</div>
-              <div class="cp-qr cp-reservation-qr" id="qrWrapper"></div>
+              <div class="cp-qr cp-reservation-qr cp-qr-branded" id="qrWrapper"></div>
               <div class="cp-reservation-link" id="guestLink"></div>
             </div>
           </div>
@@ -55,6 +55,11 @@
           <div class="cp-profile-actions" id="hostActions" hidden>
             <button class="cp-send" id="acceptBtn">Accetta accesso</button>
             <button class="cp-ghost" id="rejectBtn">Rifiuta accesso</button>
+          </div>
+
+          <div class="cp-profile-actions" id="hostUnlock" hidden>
+            <input id="hostPasscode" type="text" placeholder="Codice creator" />
+            <button class="cp-send" id="unlockBtn">Sblocca gestione</button>
           </div>
         </div>
       </div>

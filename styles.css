@@ -213,6 +213,34 @@ body::-webkit-scrollbar {
   align-self: flex-start;
 }
 
+.cp-message.with-overlay {
+  position: relative;
+  padding-top: 4.5rem;
+}
+
+.cp-message.with-overlay .cp-message-text {
+  position: relative;
+  z-index: 1;
+}
+
+.cp-message-overlay {
+  position: absolute;
+  top: -24px;
+  right: 18px;
+  width: min(380px, 80%);
+  z-index: 2;
+}
+
+@media (max-width: 900px) {
+  .cp-message.with-overlay {
+    padding-top: 5.5rem;
+  }
+  .cp-message-overlay {
+    right: 8px;
+    width: 90%;
+  }
+}
+
 .cp-message code {
   font-family: 'JetBrains Mono', monospace;
   background: rgba(255, 255, 255, 0.08);
@@ -493,9 +521,6 @@ textarea:focus {
   font-size: 0.85rem;
 }
 
-.cp-reservation-widget {
-  padding: 0.75rem;
-}
 
 .cp-reservation-bubble {
   position: relative;
@@ -540,6 +565,12 @@ textarea:focus {
 .cp-reservation-link {
   color: #c7d2fe;
   font-size: 0.75rem;
+}
+
+.cp-reservation-pass {
+  color: #fef3c7;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
 }
 
 .cp-status-pill {
@@ -596,6 +627,18 @@ textarea:focus {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.cp-qr-branded {
+  padding: 0.35rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(17, 24, 39, 0.9));
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  box-shadow: inset 0 0 12px rgba(99, 102, 241, 0.25);
+}
+
+.cp-qr-branded img {
+  border-radius: 10px;
 }
 
 .cp-uber-embed iframe {
@@ -858,6 +901,21 @@ textarea:focus {
 
 .cp-reservation-panel {
   padding: 2rem;
+}
+
+.cp-reservation-panel .cp-profile-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.cp-reservation-panel .cp-profile-actions input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+  color: var(--cp-text-main);
 }
 
 .cp-reservation-qr {
