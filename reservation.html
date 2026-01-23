@@ -146,18 +146,22 @@
       background: rgba(8, 10, 18, 0.6);
       border: 1px solid rgba(129, 140, 248, 0.2);
       padding: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: grid;
+      place-items: center;
       margin: 0 auto;
+      box-sizing: border-box;
     }
     .cp-res-qr svg,
     .cp-res-qr canvas {
       width: 100% !important;
       height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
       border-radius: 8px;
       display: block;
-      margin: 0 auto;
+      margin: auto !important;
+      align-self: center;
+      justify-self: center;
     }
     .cp-res-qr-hint {
       font-size: 0.65rem;
