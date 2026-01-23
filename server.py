@@ -210,6 +210,39 @@ def guest_requests(token):
     return jsonify({"request": dict(new_req)}), 201
 
 
+@app.route("/api/reservations/<token>/guest-request-status", methods=["GET"])
+def guest_request_status(token):
+    conn = _get_conn()
+    cur = conn.cursor()
+    _ensure_columns(cur)
+    row = _find_by_token(cur, token)
+    if not row:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Reservation not found"}), 404
+
+    phone = (request.args.get("phone") or "").strip()
+    if not phone:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Missing phone"}), 400
+
+    cur.execute(
+        """
+        SELECT id, guest_name, guest_surname, guest_phone, status, created_at
+        FROM reservation_guest_requests
+        WHERE reservation_id = %s AND guest_phone = %s
+        ORDER BY created_at DESC
+        LIMIT 1
+        """,
+        (row["id"], phone),
+    )
+    item = cur.fetchone()
+    cur.close()
+    conn.close()
+    return jsonify({"request": dict(item) if item else None})
+
+
 @app.route("/api/reservations/<token>/guest-requests/<int:req_id>/<action>", methods=["POST"])
 def manage_guest_request(token, req_id, action):
     conn = _get_conn()

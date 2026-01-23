@@ -28,6 +28,7 @@ const guestSurnameInput = document.getElementById('guestSurnameInput');
 const guestPhoneInput = document.getElementById('guestPhoneInput');
 const guestRequestBtn = document.getElementById('guestRequestBtn');
 const guestRequestStatus = document.getElementById('guestRequestStatus');
+const guestRequestSection = document.getElementById('guestRequestSection');
 
 // URL params
 const params = new URLSearchParams(window.location.search);
@@ -38,6 +39,42 @@ const urlPasscode = params.get('passcode');
 // State
 let currentData = null;
 let currentPasscode = urlPasscode || '';
+let guestRequestState = null;
+let hostPollInterval = null;
+let guestStatusInterval = null;
+
+const guestRequestStorageKey = token ? `myafters_guest_request_${token}` : 'myafters_guest_request';
+
+const loadGuestRequestState = () => {
+  if (!token) return null;
+  try {
+    const raw = localStorage.getItem(guestRequestStorageKey);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (err) {
+    return null;
+  }
+};
+
+const saveGuestRequestState = (payload) => {
+  if (!token) return;
+  if (!payload) {
+    localStorage.removeItem(guestRequestStorageKey);
+    return;
+  }
+  localStorage.setItem(guestRequestStorageKey, JSON.stringify(payload));
+};
+
+const clearIntervals = () => {
+  if (hostPollInterval) {
+    clearInterval(hostPollInterval);
+    hostPollInterval = null;
+  }
+  if (guestStatusInterval) {
+    clearInterval(guestStatusInterval);
+    guestStatusInterval = null;
+  }
+};
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -155,7 +192,9 @@ const renderHostView = (data) => {
   // Actions (show only if there are pending requests - for now always hidden since we don't track individual guest requests)
   hostActionsSection.hidden = true;
 
+  clearIntervals();
   fetchGuestRequests();
+  hostPollInterval = setInterval(fetchGuestRequests, 6000);
   
   // Show host view
   hostView.hidden = false;
@@ -214,17 +253,25 @@ const renderGuestView = (data) => {
       class: 'cp-res-status-rejected'
     }
   };
-  
-  const notice = noticeConfig[status] || noticeConfig.pending;
-  guestNoticeSection.className = `cp-res-section ${notice.class}`;
-  guestNotice.innerHTML = `
-    <div class="cp-res-guest-notice-icon">${notice.icon}</div>
-    <div class="cp-res-guest-notice-text">${notice.text}</div>
-    <div class="cp-res-guest-notice-sub">${notice.sub}</div>
-  `;
 
-  if (status === 'pending') {
+  if (guestRequestState && guestRequestState.status) {
+    applyGuestRequestStatus(guestRequestState.status);
+  } else {
+    const notice = noticeConfig[status] || noticeConfig.pending;
+    guestNoticeSection.className = `cp-res-section ${notice.class}`;
+    guestNotice.innerHTML = `
+      <div class="cp-res-guest-notice-icon">${notice.icon}</div>
+      <div class="cp-res-guest-notice-text">${notice.text}</div>
+      <div class="cp-res-guest-notice-sub">${notice.sub}</div>
+    `;
+    setGuestFormDisabled(false);
     setGuestRequestStatus('');
+  }
+
+  clearIntervals();
+  if (guestRequestState && guestRequestState.phone) {
+    fetchGuestRequestStatus();
+    guestStatusInterval = setInterval(fetchGuestRequestStatus, 6000);
   }
   
   // Show guest view
@@ -243,6 +290,8 @@ const renderUnlockView = (data) => {
   updateStatusDisplay(data.status);
   
   roleBadge.hidden = true;
+
+  clearIntervals();
   
   // Show unlock view
   hostView.hidden = true;
@@ -303,6 +352,15 @@ const fetchReservation = async () => {
       currentPasscode = data.host_passcode;
       localStorage.setItem(`myafters_host_pass_${token}`, data.host_passcode);
     }
+
+    if (!guestRequestState) {
+      guestRequestState = loadGuestRequestState();
+      if (guestRequestState) {
+        if (guestNameInput && guestRequestState.name) guestNameInput.value = guestRequestState.name;
+        if (guestSurnameInput && guestRequestState.surname) guestSurnameInput.value = guestRequestState.surname;
+        if (guestPhoneInput && guestRequestState.phone) guestPhoneInput.value = guestRequestState.phone;
+      }
+    }
     
     renderReservation(data);
   } catch (err) {
@@ -337,6 +395,51 @@ const setGuestRequestStatus = (message, isError = false) => {
   if (!guestRequestStatus) return;
   guestRequestStatus.textContent = message || '';
   guestRequestStatus.style.color = isError ? '#fca5a5' : 'rgba(148, 163, 184, 0.8)';
+};
+
+const setGuestFormDisabled = (disabled = false) => {
+  if (guestNameInput) guestNameInput.disabled = disabled;
+  if (guestSurnameInput) guestSurnameInput.disabled = disabled;
+  if (guestPhoneInput) guestPhoneInput.disabled = disabled;
+  if (guestRequestBtn) guestRequestBtn.disabled = disabled;
+  if (guestRequestSection) guestRequestSection.hidden = disabled;
+};
+
+const applyGuestRequestStatus = (status) => {
+  if (!status) {
+    setGuestFormDisabled(false);
+    return;
+  }
+  setGuestFormDisabled(true);
+
+  const noticeConfig = {
+    pending: {
+      icon: '⏳',
+      text: 'Richiesta in attesa di approvazione',
+      sub: 'Il creatore del tavolo deve accettare la tua richiesta',
+      class: 'cp-res-status-pending'
+    },
+    accepted: {
+      icon: '🎉',
+      text: 'Sei stato accettato al tavolo!',
+      sub: 'Presentati al locale con questo QR code',
+      class: 'cp-res-status-accepted'
+    },
+    rejected: {
+      icon: '😔',
+      text: 'Richiesta non accettata',
+      sub: 'Il creatore del tavolo ha rifiutato la richiesta',
+      class: 'cp-res-status-rejected'
+    }
+  };
+
+  const notice = noticeConfig[status] || noticeConfig.pending;
+  guestNoticeSection.className = `cp-res-section ${notice.class}`;
+  guestNotice.innerHTML = `
+    <div class="cp-res-guest-notice-icon">${notice.icon}</div>
+    <div class="cp-res-guest-notice-text">${notice.text}</div>
+    <div class="cp-res-guest-notice-sub">${notice.sub}</div>
+  `;
 };
 
 const renderGuestRequests = (items = []) => {
@@ -388,6 +491,29 @@ const fetchGuestRequests = async () => {
   }
 };
 
+const fetchGuestRequestStatus = async () => {
+  if (!token) return;
+  const phone = guestRequestState?.phone || guestPhoneInput?.value?.trim();
+  if (!phone) return;
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/reservations/${token}/guest-request-status?phone=${encodeURIComponent(phone)}`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (!data.request) return;
+    guestRequestState = {
+      name: data.request.guest_name,
+      surname: data.request.guest_surname,
+      phone: data.request.guest_phone,
+      status: data.request.status
+    };
+    saveGuestRequestState(guestRequestState);
+    applyGuestRequestStatus(guestRequestState.status);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 const submitGuestRequest = async () => {
   if (!token) return;
   const name = guestNameInput?.value?.trim();
@@ -419,7 +545,14 @@ const submitGuestRequest = async () => {
     }
 
     await resp.json();
+    guestRequestState = { name, surname, phone, status: 'pending' };
+    saveGuestRequestState(guestRequestState);
+    applyGuestRequestStatus('pending');
     setGuestRequestStatus('Richiesta inviata! In attesa di approvazione.');
+
+    if (!guestStatusInterval) {
+      guestStatusInterval = setInterval(fetchGuestRequestStatus, 6000);
+    }
   } catch (err) {
     console.error(err);
     setGuestRequestStatus('Errore durante l\'invio.', true);
