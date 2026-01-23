@@ -20,33 +20,46 @@
       overflow-y: auto;
     }
     .cp-res-card {
-      max-width: 480px;
+      max-width: 440px;
       margin: 0 auto;
-      background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 27, 75, 0.85));
-      border: 1px solid rgba(129, 140, 248, 0.25);
-      border-radius: 24px;
+      background: rgba(10, 12, 20, 0.88);
+      border: 1px solid rgba(129, 140, 248, 0.35);
+      border-radius: 22px;
       overflow: hidden;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+      box-shadow:
+        0 30px 70px rgba(5, 8, 18, 0.6),
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 1px 0 rgba(255, 255, 255, 0.05) inset;
+      backdrop-filter: blur(22px) saturate(180%);
+      -webkit-backdrop-filter: blur(22px) saturate(180%);
     }
     .cp-res-hero {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(168, 85, 247, 0.2));
-      padding: 1.5rem;
+      background: rgba(12, 14, 25, 0.8);
+      padding: 1.6rem 1.5rem;
       text-align: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
     .cp-res-hero-icon {
-      font-size: 3rem;
-      margin-bottom: 0.5rem;
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 0.75rem;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(124, 58, 237, 0.15));
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.55rem;
     }
     .cp-res-hero-title {
-      font-size: 1.5rem;
+      font-size: 1.55rem;
       font-weight: 700;
       color: #f8fafc;
       margin-bottom: 0.25rem;
     }
     .cp-res-hero-sub {
       font-size: 0.85rem;
-      color: var(--cp-text-muted);
+      color: rgba(148, 163, 184, 0.8);
     }
     .cp-res-role-badge {
       display: inline-flex;
@@ -90,45 +103,49 @@
       gap: 0.4rem;
     }
     .cp-res-info-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 0.65rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
     .cp-res-info-item {
       background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(129, 140, 248, 0.18);
       border-radius: 12px;
-      padding: 0.65rem 0.85rem;
+      padding: 0.6rem 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.6rem;
     }
     .cp-res-info-label {
-      font-size: 0.65rem;
-      color: var(--cp-text-muted);
+      font-size: 0.62rem;
+      color: rgba(148, 163, 184, 0.7);
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 0.2rem;
+      letter-spacing: 0.05em;
     }
     .cp-res-info-value {
-      font-size: 0.9rem;
+      font-size: 0.8rem;
       font-weight: 500;
       color: #e2e8f0;
+      text-align: right;
     }
     .cp-res-qr-wrapper {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.75rem;
-      padding: 1rem;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      gap: 0.65rem;
+      padding: 1.25rem;
+      background: rgba(8, 12, 22, 0.7);
+      border: 1px solid rgba(129, 140, 248, 0.15);
       border-radius: 16px;
     }
     .cp-res-qr {
-      width: 180px;
-      height: 180px;
+      width: 170px;
+      height: 170px;
       border-radius: 16px;
-      background: rgba(15, 15, 20, 0.5);
-      border: 1px solid rgba(124, 58, 237, 0.3);
-      padding: 10px;
+      background: rgba(8, 10, 18, 0.6);
+      border: 1px solid rgba(129, 140, 248, 0.2);
+      padding: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -140,23 +157,27 @@
       border-radius: 8px;
     }
     .cp-res-qr-hint {
-      font-size: 0.75rem;
-      color: var(--cp-text-muted);
+      font-size: 0.65rem;
+      color: rgba(148, 163, 184, 0.6);
       text-align: center;
     }
     .cp-res-link {
       display: block;
-      padding: 0.5rem 0.75rem;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      font-size: 0.72rem;
-      color: #c7d2fe;
+      padding: 0.45rem 0.65rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      font-size: 0.65rem;
+      color: rgba(148, 163, 184, 0.7);
       word-break: break-all;
       text-align: center;
+      max-width: 280px;
     }
     .cp-res-link a {
-      color: inherit;
+      color: #a5b4fc;
+      text-decoration: none;
+    }
+    .cp-res-link a:hover {
       text-decoration: underline;
     }
     .cp-res-passcode-box {
@@ -164,21 +185,24 @@
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
-      padding: 0.85rem 1rem;
-      background: linear-gradient(135deg, rgba(254, 243, 199, 0.08), rgba(251, 191, 36, 0.05));
-      border: 1px solid rgba(251, 191, 36, 0.3);
+      padding: 0.9rem 1rem;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(129, 140, 248, 0.3);
       border-radius: 12px;
     }
     .cp-res-passcode-label {
       font-size: 0.75rem;
-      color: #fef3c7;
+      color: rgba(148, 163, 184, 0.8);
     }
     .cp-res-passcode-value {
       font-family: 'JetBrains Mono', monospace;
       font-size: 1.1rem;
       font-weight: 600;
-      color: #fef3c7;
+      color: #a5b4fc;
       letter-spacing: 0.15em;
+      background: rgba(99, 102, 241, 0.1);
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
     }
     .cp-res-actions {
       display: flex;

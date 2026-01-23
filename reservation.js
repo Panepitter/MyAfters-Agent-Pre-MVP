@@ -26,9 +26,11 @@ const unlockBtn = document.getElementById('unlockBtn');
 const params = new URLSearchParams(window.location.search);
 const token = params.get('token');
 const roleParam = params.get('role');
+const urlPasscode = params.get('passcode');
 
 // State
 let currentData = null;
+let currentPasscode = urlPasscode || '';
 
 const formatDate = (value) => {
   if (!value) return '—';
@@ -45,7 +47,7 @@ const formatDate = (value) => {
   }
 };
 
-const buildGradientQr = (element, text, size = 160) => {
+const buildGradientQr = (element, text, size = 170) => {
   if (!window.QRCodeStyling || !element || !text) return false;
   element.innerHTML = '';
   const qr = new QRCodeStyling({
@@ -53,27 +55,29 @@ const buildGradientQr = (element, text, size = 160) => {
     height: size,
     type: 'svg',
     data: text,
-    margin: 0,
+    margin: 4,
+    qrOptions: {
+      errorCorrectionLevel: 'L'
+    },
     dotsOptions: {
       type: 'dots',
       gradient: {
         type: 'linear',
-        rotation: 0.8,
+        rotation: 2.2,
         colorStops: [
-          { offset: 0, color: '#7c3aed' },
-          { offset: 0.35, color: '#ec4899' },
-          { offset: 0.7, color: '#22d3ee' },
-          { offset: 1, color: '#22c55e' }
+          { offset: 0, color: '#6366f1' },
+          { offset: 0.6, color: '#4f46e5' },
+          { offset: 1, color: '#7c3aed' }
         ]
       }
     },
     cornersSquareOptions: {
       type: 'extra-rounded',
-      color: '#c084fc'
+      color: '#6366f1'
     },
     cornersDotOptions: {
       type: 'dot',
-      color: '#38bdf8'
+      color: '#7c3aed'
     },
     backgroundOptions: {
       color: 'transparent'
@@ -95,8 +99,8 @@ const renderInfoGrid = (container, reservation) => {
   
   container.innerHTML = items.map(item => `
     <div class="cp-res-info-item">
-      <div class="cp-res-info-label">${item.label}</div>
-      <div class="cp-res-info-value">${item.value}</div>
+      <span class="cp-res-info-label">${item.label}</span>
+      <span class="cp-res-info-value">${item.value}</span>
     </div>
   `).join('');
 };
@@ -253,12 +257,24 @@ const fetchReservation = async () => {
   }
   
   try {
-    // Check for stored passcode
+    // Priority: URL param (first load) > input > current state > localStorage
     const storedPasscode = localStorage.getItem(`myafters_host_pass_${token}`);
-    const inputPasscode = passcodeInput?.value || '';
-    const passcode = inputPasscode || storedPasscode || '';
+    const inputPasscode = passcodeInput?.value?.trim() || '';
     
-    const query = passcode ? `?passcode=${encodeURIComponent(passcode)}` : '';
+    // Determine best passcode to use
+    if (inputPasscode) {
+      currentPasscode = inputPasscode;
+    } else if (!currentPasscode) {
+      // First load - check URL param first, then localStorage
+      currentPasscode = urlPasscode || storedPasscode || '';
+    }
+    
+    // Store valid passcode
+    if (currentPasscode) {
+      localStorage.setItem(`myafters_host_pass_${token}`, currentPasscode);
+    }
+    
+    const query = currentPasscode ? `?passcode=${encodeURIComponent(currentPasscode)}` : '';
     const resp = await fetch(`${API_BASE}/api/reservations/${token}${query}`);
     
     if (!resp.ok) {
@@ -267,6 +283,13 @@ const fetchReservation = async () => {
     }
     
     const data = await resp.json();
+    
+    // If we got host role, store the passcode
+    if (data.role === 'host' && data.host_passcode) {
+      currentPasscode = data.host_passcode;
+      localStorage.setItem(`myafters_host_pass_${token}`, data.host_passcode);
+    }
+    
     renderReservation(data);
   } catch (err) {
     heroSub.textContent = 'Errore nel caricamento della prenotazione.';
@@ -281,8 +304,7 @@ const updateStatus = async (action) => {
   rejectBtn.disabled = true;
   
   try {
-    const passcode = passcodeInput?.value || localStorage.getItem(`myafters_host_pass_${token}`) || '';
-    const query = passcode ? `?passcode=${encodeURIComponent(passcode)}` : '';
+    const query = currentPasscode ? `?passcode=${encodeURIComponent(currentPasscode)}` : '';
     const resp = await fetch(`${API_BASE}/api/reservations/${token}/${action}${query}`, { method: 'POST' });
     
     if (resp.ok) {
@@ -298,12 +320,20 @@ const updateStatus = async (action) => {
 };
 
 // Event listeners
-unlockBtn?.addEventListener('click', () => {
+unlockBtn?.addEventListener('click', async () => {
   const code = passcodeInput?.value?.trim();
   if (!code) return;
   
+  unlockBtn.disabled = true;
+  unlockBtn.textContent = 'Verifica...';
+  
+  currentPasscode = code;
   localStorage.setItem(`myafters_host_pass_${token}`, code);
-  fetchReservation();
+  
+  await fetchReservation();
+  
+  unlockBtn.disabled = false;
+  unlockBtn.textContent = 'Sblocca';
 });
 
 passcodeInput?.addEventListener('keydown', (e) => {

@@ -101,6 +101,9 @@ def get_reservation(token):
     requires_passcode = bool(is_host_token and host_passcode and passcode != host_passcode)
 
     host_url, guest_url = _build_urls(row.get("host_token"), row.get("guest_token"))
+    if is_host_token and host_passcode:
+        separator = "&" if "?" in host_url else "?"
+        host_url = f"{host_url}{separator}passcode={host_passcode}"
 
     cur.close()
     conn.close()
@@ -114,7 +117,7 @@ def get_reservation(token):
         "qrcode_url": _build_qr_url(guest_url),
         "requires_passcode": requires_passcode,
     }
-    if is_host:
+    if is_host_token and host_passcode:
         response["host_passcode"] = host_passcode
 
     return jsonify(response)
@@ -141,6 +144,9 @@ def accept_reservation(token):
     cur.close()
     conn.close()
     host_url, guest_url = _build_urls(updated.get("host_token"), updated.get("guest_token"))
+    if updated.get("host_passcode"):
+        separator = "&" if "?" in host_url else "?"
+        host_url = f"{host_url}{separator}passcode={updated.get('host_passcode')}"
 
     return jsonify(
         {
@@ -150,6 +156,7 @@ def accept_reservation(token):
             "reservation_url": host_url,
             "guest_url": guest_url,
             "qrcode_url": _build_qr_url(guest_url),
+            "host_passcode": updated.get("host_passcode"),
         }
     )
 
@@ -175,6 +182,9 @@ def reject_reservation(token):
     cur.close()
     conn.close()
     host_url, guest_url = _build_urls(updated.get("host_token"), updated.get("guest_token"))
+    if updated.get("host_passcode"):
+        separator = "&" if "?" in host_url else "?"
+        host_url = f"{host_url}{separator}passcode={updated.get('host_passcode')}"
 
     return jsonify(
         {
@@ -184,6 +194,7 @@ def reject_reservation(token):
             "reservation_url": host_url,
             "guest_url": guest_url,
             "qrcode_url": _build_qr_url(guest_url),
+            "host_passcode": updated.get("host_passcode"),
         }
     )
 

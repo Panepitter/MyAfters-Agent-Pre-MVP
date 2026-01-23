@@ -115,7 +115,7 @@ const renderMessages = () => {
 
 const DEFAULT_CENTER = { lat: 45.4642, lng: 9.19 };
 
-const buildGradientQr = (element, text, size = 90) => {
+const buildGradientQr = (element, text, size = 100) => {
   if (!window.QRCodeStyling || !element || !text) return false;
   element.innerHTML = '';
   const qr = new QRCodeStyling({
@@ -123,29 +123,29 @@ const buildGradientQr = (element, text, size = 90) => {
     height: size,
     type: 'svg',
     data: text,
-    margin: 0,
+    margin: 4,
     qrOptions: {
       errorCorrectionLevel: 'L'
     },
     dotsOptions: {
-      type: 'rounded',
+      type: 'dots',
       gradient: {
         type: 'linear',
-        rotation: 0.7,
+        rotation: 2.2,
         colorStops: [
-          { offset: 0, color: '#8b5cf6' },
-          { offset: 0.5, color: '#ec4899' },
-          { offset: 1, color: '#06b6d4' }
+          { offset: 0, color: '#6366f1' },
+          { offset: 0.6, color: '#4f46e5' },
+          { offset: 1, color: '#7c3aed' }
         ]
       }
     },
     cornersSquareOptions: {
       type: 'extra-rounded',
-      color: '#a78bfa'
+      color: '#6366f1'
     },
     cornersDotOptions: {
       type: 'dot',
-      color: '#22d3ee'
+      color: '#7c3aed'
     },
     backgroundOptions: {
       color: 'transparent'
@@ -491,10 +491,16 @@ const buildReservationOverlayHtml = (payload) => {
   const status = payload.status || reservation.status || 'pending';
   const date = reservation.reservation_datetime ? new Date(reservation.reservation_datetime).toLocaleString('it-IT') : '—';
   const venueInfo = reservation.venue_id ? `Locale #${reservation.venue_id}` : 'Locale selezionato';
-  const hostUrl = payload.reservation_url || '#';
-  const guestUrl = payload.guest_url || '';
   const hostPasscode = payload.host_passcode || '';
+  const guestUrl = payload.guest_url || '';
   const tableLabel = reservation.table_number || '—';
+  
+  // Build host URL with passcode included so creator can access directly
+  let hostUrl = payload.reservation_url || '#';
+  if (hostPasscode && hostUrl !== '#') {
+    const separator = hostUrl.includes('?') ? '&' : '?';
+    hostUrl = `${hostUrl}${separator}passcode=${encodeURIComponent(hostPasscode)}`;
+  }
 
   const statusLabel = {
     pending: 'In attesa',
@@ -533,8 +539,8 @@ const buildReservationOverlayHtml = (payload) => {
             </div>
             
             <div class="cp-bubble-qr-section">
-              <div class="cp-bubble-qr" data-qr="${guestUrl}" data-qr-size="90"></div>
-              <div class="cp-bubble-qr-hint">Scansiona per invitare</div>
+              <div class="cp-bubble-qr" data-qr="${guestUrl}" data-qr-size="94"></div>
+              <div class="cp-bubble-qr-hint">QR per invitare ospiti</div>
             </div>
           </div>
           
@@ -544,7 +550,7 @@ const buildReservationOverlayHtml = (payload) => {
               <span class="cp-bubble-passcode-value">${hostPasscode}</span>
             </div>
             <a class="cp-bubble-manage-btn" href="${hostUrl}" target="_blank" rel="noopener">
-              Gestisci tavolo →
+              Gestisci →
             </a>
           </div>
         </div>

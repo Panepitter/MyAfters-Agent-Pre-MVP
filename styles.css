@@ -222,7 +222,7 @@ body::-webkit-scrollbar {
 
 .cp-message.with-overlay {
   position: relative;
-  padding-top: 4.5rem;
+  /* padding-top: 4.5rem; */
 }
 
 .cp-message.with-overlay .cp-message-text {
@@ -282,7 +282,7 @@ body::-webkit-scrollbar {
 
 @media (max-width: 900px) {
   .cp-message.with-overlay {
-    padding-top: 5.5rem;
+    /* padding-top: 5.5rem; */
   }
   .cp-message-overlay {
     right: 8px;
@@ -664,42 +664,54 @@ textarea:focus {
   font-size: 0.75rem;
 }
 
-/* ===== RESERVATION BUBBLE V2 ===== */
+/* ===== RESERVATION BUBBLE V2 - GLASSMORPHISM DARK ===== */
 .cp-reservation-bubble-v2 {
   position: relative;
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 27, 75, 0.9));
-  border: 1px solid rgba(129, 140, 248, 0.3);
-  border-radius: 20px;
-  padding: 1rem;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  max-width: 320px;
-  backdrop-filter: blur(12px);
+  background: rgba(8, 8, 12, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  padding: 1.1rem;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  max-width: 340px;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
 .cp-bubble-arrow {
   position: absolute;
-  left: 28px;
-  bottom: -10px;
-  width: 20px;
-  height: 20px;
-  background: linear-gradient(135deg, transparent 50%, rgba(15, 23, 42, 0.95) 50%);
-  border-right: 1px solid rgba(129, 140, 248, 0.3);
-  border-bottom: 1px solid rgba(129, 140, 248, 0.3);
+  left: 24px;
+  bottom: -9px;
+  width: 18px;
+  height: 18px;
+  background: rgba(8, 8, 12, 0.85);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   transform: rotate(45deg);
+  backdrop-filter: blur(20px);
 }
 
 .cp-bubble-header-v2 {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 0.75rem;
+  gap: 0.75rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 0.85rem;
 }
 
 .cp-bubble-icon {
-  font-size: 1.5rem;
-  line-height: 1;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1));
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
 }
 
 .cp-bubble-title-group {
@@ -708,33 +720,34 @@ textarea:focus {
 }
 
 .cp-bubble-title {
-  font-weight: 700;
-  font-size: 1rem;
-  color: #f8fafc;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #f1f5f9;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .cp-bubble-venue {
-  font-size: 0.7rem;
-  color: var(--cp-text-muted);
+  font-size: 0.68rem;
+  color: rgba(148, 163, 184, 0.8);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 0.15rem;
 }
 
 .cp-bubble-body {
   display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
+  gap: 1rem;
+  align-items: stretch;
 }
 
 .cp-bubble-info {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 
 .cp-bubble-row {
@@ -742,41 +755,46 @@ textarea:focus {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .cp-bubble-label {
-  font-size: 0.68rem;
-  color: var(--cp-text-muted);
+  font-size: 0.62rem;
+  color: rgba(148, 163, 184, 0.7);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .cp-bubble-value {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: #e2e8f0;
   font-weight: 500;
   text-align: right;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
+  max-width: 100px;
 }
 
 .cp-bubble-qr-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: center;
+  gap: 0.4rem;
   flex-shrink: 0;
 }
 
 .cp-bubble-qr {
-  width: 90px;
-  height: 90px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(124, 58, 237, 0.4);
-  padding: 6px;
+  width: 110px;
+  height: 110px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -787,12 +805,12 @@ textarea:focus {
 .cp-bubble-qr canvas {
   width: 100% !important;
   height: 100% !important;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .cp-bubble-qr-hint {
-  font-size: 0.6rem;
-  color: var(--cp-text-muted);
+  font-size: 0.58rem;
+  color: rgba(148, 163, 184, 0.6);
   text-align: center;
 }
 
@@ -800,41 +818,45 @@ textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .cp-bubble-passcode {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.2rem;
 }
 
 .cp-bubble-passcode-label {
-  font-size: 0.6rem;
-  color: var(--cp-text-muted);
+  font-size: 0.58rem;
+  color: rgba(148, 163, 184, 0.6);
 }
 
 .cp-bubble-passcode-value {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  color: #fef3c7;
-  letter-spacing: 0.1em;
+  color: #a5b4fc;
+  letter-spacing: 0.12em;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
 }
 
 .cp-bubble-manage-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.45rem 0.85rem;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.2));
-  border: 1px solid rgba(129, 140, 248, 0.4);
+  gap: 0.3rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.2);
   color: #c7d2fe;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 500;
   text-decoration: none;
   transition: all 0.2s ease;
@@ -842,8 +864,9 @@ textarea:focus {
 }
 
 .cp-bubble-manage-btn:hover {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(168, 85, 247, 0.35));
-  border-color: rgba(129, 140, 248, 0.6);
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #e0e7ff;
   transform: translateY(-1px);
 }
 
@@ -1276,9 +1299,9 @@ textarea:focus {
     font-size: 0.9rem;
   }
   
-  .cp-message.with-overlay {
+/*   .cp-message.with-overlay {
     padding-top: 4rem;
-  }
+  } */
   
   .cp-message-overlay {
     top: -16px;
@@ -1323,18 +1346,30 @@ textarea:focus {
   }
   
   .cp-quick {
-    gap: 0.4rem;
+    gap: 0.35rem;
     margin-bottom: 0.65rem;
     overflow-x: auto;
+    overflow-y: hidden;
     flex-wrap: nowrap;
-    padding-bottom: 0.25rem;
+    padding-bottom: 0.15rem;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .cp-quick::-webkit-scrollbar {
+    display: none;
   }
   
   .cp-quick-btn {
     flex-shrink: 0;
-    padding: 0.3rem 0.65rem;
-    font-size: 0.7rem;
+    padding: 0.28rem 0.6rem;
+    font-size: 0.68rem;
+    white-space: nowrap;
   }
   
   .cp-input-row {
@@ -1379,8 +1414,30 @@ textarea:focus {
   }
   
   .cp-map {
-    height: 180px;
+    height: 200px;
     border-radius: 14px;
+  }
+  
+  .cp-map .leaflet-container {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  
+  .cp-coords {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  
+  .cp-coords > div {
+    min-width: 0;
+    overflow: hidden;
+  }
+  
+  .cp-coords input {
+    width: 100%;
+    min-width: 0;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.8rem;
   }
   
   .cp-widget {
