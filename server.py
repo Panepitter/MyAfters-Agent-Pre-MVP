@@ -20,6 +20,22 @@ def _get_conn():
 
 def _ensure_columns(cur):
     cur.execute("ALTER TABLE reservations ADD COLUMN IF NOT EXISTS host_passcode TEXT")
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS reservation_guest_requests (
+            id SERIAL PRIMARY KEY,
+            reservation_id INTEGER NOT NULL,
+            guest_name TEXT NOT NULL,
+            guest_surname TEXT NOT NULL,
+            guest_phone TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_guest_requests_reservation ON reservation_guest_requests(reservation_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_guest_requests_status ON reservation_guest_requests(status)")
 
 
 def _serialize(row):
@@ -121,6 +137,123 @@ def get_reservation(token):
         response["host_passcode"] = host_passcode
 
     return jsonify(response)
+
+
+@app.route("/api/reservations/<token>/guest-requests", methods=["GET", "POST"])
+def guest_requests(token):
+    conn = _get_conn()
+    cur = conn.cursor()
+    _ensure_columns(cur)
+    row = _find_by_token(cur, token)
+    if not row:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Reservation not found"}), 404
+
+    passcode = request.args.get("passcode") or ""
+    is_host_token = token == row.get("host_token")
+    host_passcode = row.get("host_passcode")
+    is_host = is_host_token and host_passcode and passcode == host_passcode
+
+    if request.method == "GET":
+        if not is_host:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Unauthorized"}), 403
+        cur.execute(
+            "SELECT id, guest_name, guest_surname, guest_phone, status, created_at FROM reservation_guest_requests WHERE reservation_id = %s ORDER BY created_at DESC",
+            (row["id"],)
+        )
+        items = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        conn.close()
+        return jsonify({"requests": items})
+
+    # POST guest request
+    if is_host_token:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Host token cannot submit request"}), 400
+
+    payload = request.get_json(silent=True) or {}
+    guest_name = (payload.get("name") or "").strip()
+    guest_surname = (payload.get("surname") or "").strip()
+    guest_phone = (payload.get("phone") or "").strip()
+
+    if not guest_name or not guest_surname or not guest_phone:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Missing required fields"}), 400
+
+    cur.execute(
+        "SELECT id, status FROM reservation_guest_requests WHERE reservation_id = %s AND guest_phone = %s AND status = 'pending'",
+        (row["id"], guest_phone)
+    )
+    existing = cur.fetchone()
+    if existing:
+        cur.close()
+        conn.close()
+        return jsonify({"request": dict(existing), "status": "pending"}), 200
+
+    cur.execute(
+        """
+        INSERT INTO reservation_guest_requests (reservation_id, guest_name, guest_surname, guest_phone)
+        VALUES (%s, %s, %s, %s)
+        RETURNING id, guest_name, guest_surname, guest_phone, status, created_at
+        """,
+        (row["id"], guest_name, guest_surname, guest_phone)
+    )
+    new_req = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"request": dict(new_req)}), 201
+
+
+@app.route("/api/reservations/<token>/guest-requests/<int:req_id>/<action>", methods=["POST"])
+def manage_guest_request(token, req_id, action):
+    conn = _get_conn()
+    cur = conn.cursor()
+    _ensure_columns(cur)
+    row = _find_by_token(cur, token)
+    if not row:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Reservation not found"}), 404
+
+    passcode = request.args.get("passcode") or ""
+    is_host_token = token == row.get("host_token")
+    host_passcode = row.get("host_passcode")
+    is_host = is_host_token and host_passcode and passcode == host_passcode
+    if not is_host:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Unauthorized"}), 403
+
+    if action not in ("accept", "reject"):
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Invalid action"}), 400
+
+    cur.execute(
+        """
+        UPDATE reservation_guest_requests
+        SET status = %s, updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s AND reservation_id = %s
+        RETURNING id, guest_name, guest_surname, guest_phone, status, created_at
+        """,
+        ("accepted" if action == "accept" else "rejected", req_id, row["id"])
+    )
+    updated = cur.fetchone()
+    if not updated:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Request not found"}), 404
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"request": dict(updated)})
 
 
 @app.route("/api/reservations/<token>/accept", methods=["POST"])

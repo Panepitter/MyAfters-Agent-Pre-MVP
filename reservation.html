@@ -268,6 +268,48 @@
       outline: none;
       border-color: var(--cp-primary);
     }
+    .cp-res-request-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .cp-res-request-form input {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--cp-border);
+      border-radius: 10px;
+      padding: 0.65rem 0.85rem;
+      color: var(--cp-text-main);
+    }
+    .cp-res-request-form input:focus {
+      outline: none;
+      border-color: var(--cp-primary);
+    }
+    .cp-res-request-status {
+      font-size: 0.75rem;
+      color: var(--cp-text-muted);
+    }
+    .cp-res-requests {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .cp-res-request-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      padding: 0.7rem 0.85rem;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(129, 140, 248, 0.18);
+    }
+    .cp-res-request-meta {
+      font-size: 0.75rem;
+      color: rgba(148, 163, 184, 0.8);
+    }
+    .cp-res-request-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
     .cp-res-guest-notice {
       text-align: center;
       padding: 1rem;
@@ -389,6 +431,11 @@
               </div>
             </div>
 
+            <div class="cp-res-section" id="hostRequestsSection">
+              <div class="cp-res-section-title">👥 Richieste ospiti</div>
+              <div class="cp-res-requests" id="hostRequestsList"></div>
+            </div>
+
             <div class="cp-res-section" id="hostActionsSection" hidden>
               <div class="cp-res-section-title">⚡ Azioni</div>
               <div class="cp-res-actions">
@@ -410,6 +457,17 @@
                 <div class="cp-res-guest-notice-icon">⏳</div>
                 <div class="cp-res-guest-notice-text">Richiesta in attesa di approvazione</div>
                 <div class="cp-res-guest-notice-sub">Il creatore del tavolo deve accettare la tua richiesta</div>
+              </div>
+            </div>
+
+            <div class="cp-res-section" id="guestRequestSection">
+              <div class="cp-res-section-title">🙋 Richiedi partecipazione</div>
+              <div class="cp-res-request-form">
+                <input id="guestNameInput" type="text" placeholder="Nome" />
+                <input id="guestSurnameInput" type="text" placeholder="Cognome" />
+                <input id="guestPhoneInput" type="tel" placeholder="Telefono" />
+                <button class="cp-res-btn cp-res-btn-primary" id="guestRequestBtn">Invia richiesta</button>
+                <div class="cp-res-request-status" id="guestRequestStatus"></div>
               </div>
             </div>
           </div>
