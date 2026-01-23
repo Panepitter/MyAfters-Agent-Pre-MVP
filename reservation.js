@@ -21,6 +21,13 @@ const guestNoticeSection = document.getElementById('guestNoticeSection');
 const guestNotice = document.getElementById('guestNotice');
 const passcodeInput = document.getElementById('passcodeInput');
 const unlockBtn = document.getElementById('unlockBtn');
+const hostRequestsSection = document.getElementById('hostRequestsSection');
+const hostRequestsList = document.getElementById('hostRequestsList');
+const guestNameInput = document.getElementById('guestNameInput');
+const guestSurnameInput = document.getElementById('guestSurnameInput');
+const guestPhoneInput = document.getElementById('guestPhoneInput');
+const guestRequestBtn = document.getElementById('guestRequestBtn');
+const guestRequestStatus = document.getElementById('guestRequestStatus');
 
 // URL params
 const params = new URLSearchParams(window.location.search);
@@ -147,6 +154,8 @@ const renderHostView = (data) => {
   
   // Actions (show only if there are pending requests - for now always hidden since we don't track individual guest requests)
   hostActionsSection.hidden = true;
+
+  fetchGuestRequests();
   
   // Show host view
   hostView.hidden = false;
@@ -213,6 +222,10 @@ const renderGuestView = (data) => {
     <div class="cp-res-guest-notice-text">${notice.text}</div>
     <div class="cp-res-guest-notice-sub">${notice.sub}</div>
   `;
+
+  if (status === 'pending') {
+    setGuestRequestStatus('');
+  }
   
   // Show guest view
   hostView.hidden = true;
@@ -320,6 +333,116 @@ const updateStatus = async (action) => {
   }
 };
 
+const setGuestRequestStatus = (message, isError = false) => {
+  if (!guestRequestStatus) return;
+  guestRequestStatus.textContent = message || '';
+  guestRequestStatus.style.color = isError ? '#fca5a5' : 'rgba(148, 163, 184, 0.8)';
+};
+
+const renderGuestRequests = (items = []) => {
+  if (!hostRequestsList || !hostRequestsSection) return;
+  if (!items.length) {
+    hostRequestsList.innerHTML = '<div class="cp-res-request-status">Nessuna richiesta al momento.</div>';
+    hostRequestsSection.hidden = false;
+    return;
+  }
+
+  hostRequestsList.innerHTML = items.map((req) => {
+    const actions = req.status === 'pending'
+      ? `
+        <div class="cp-res-request-actions">
+          <button class="cp-res-btn cp-res-btn-primary" data-action="accept" data-id="${req.id}">✓ Accetta</button>
+          <button class="cp-res-btn cp-res-btn-danger" data-action="reject" data-id="${req.id}">✕ Rifiuta</button>
+        </div>
+      `
+      : `
+        <div class="cp-res-request-meta">Stato: ${req.status === 'accepted' ? 'Accettata' : 'Rifiutata'}</div>
+      `;
+
+    return `
+      <div class="cp-res-request-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">
+          <strong style="font-size:0.85rem;color:#e2e8f0;">${req.guest_name} ${req.guest_surname}</strong>
+          <span class="cp-res-request-meta">${req.guest_phone}</span>
+        </div>
+        ${actions}
+      </div>
+    `;
+  }).join('');
+
+  hostRequestsSection.hidden = false;
+};
+
+const fetchGuestRequests = async () => {
+  if (!token || !currentData || currentData.role !== 'host') return;
+  if (!hostRequestsList) return;
+
+  try {
+    const query = currentPasscode ? `?passcode=${encodeURIComponent(currentPasscode)}` : '';
+    const resp = await fetch(`${API_BASE}/api/reservations/${token}/guest-requests${query}`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    renderGuestRequests(data.requests || []);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const submitGuestRequest = async () => {
+  if (!token) return;
+  const name = guestNameInput?.value?.trim();
+  const surname = guestSurnameInput?.value?.trim();
+  const phone = guestPhoneInput?.value?.trim();
+
+  if (!name || !surname || !phone) {
+    setGuestRequestStatus('Compila tutti i campi richiesti.', true);
+    return;
+  }
+
+  if (guestRequestBtn) {
+    guestRequestBtn.disabled = true;
+    guestRequestBtn.textContent = 'Invio...';
+  }
+  setGuestRequestStatus('Invio richiesta in corso...');
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/reservations/${token}/guest-requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, surname, phone })
+    });
+
+    if (!resp.ok) {
+      const errorData = await resp.json().catch(() => ({}));
+      setGuestRequestStatus(errorData.error || 'Errore durante l\'invio.', true);
+      return;
+    }
+
+    await resp.json();
+    setGuestRequestStatus('Richiesta inviata! In attesa di approvazione.');
+  } catch (err) {
+    console.error(err);
+    setGuestRequestStatus('Errore durante l\'invio.', true);
+  } finally {
+    if (guestRequestBtn) {
+      guestRequestBtn.disabled = false;
+      guestRequestBtn.textContent = 'Invia richiesta';
+    }
+  }
+};
+
+const handleGuestRequestAction = async (reqId, action) => {
+  if (!token || !currentData || currentData.role !== 'host') return;
+  try {
+    const query = currentPasscode ? `?passcode=${encodeURIComponent(currentPasscode)}` : '';
+    const resp = await fetch(`${API_BASE}/api/reservations/${token}/guest-requests/${reqId}/${action}${query}`, { method: 'POST' });
+    if (!resp.ok) return;
+    await fetchGuestRequests();
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 // Event listeners
 unlockBtn?.addEventListener('click', async () => {
   const code = passcodeInput?.value?.trim();
@@ -345,6 +468,23 @@ passcodeInput?.addEventListener('keydown', (e) => {
 
 acceptBtn?.addEventListener('click', () => updateStatus('accept'));
 rejectBtn?.addEventListener('click', () => updateStatus('reject'));
+
+guestRequestBtn?.addEventListener('click', () => submitGuestRequest());
+
+guestPhoneInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    submitGuestRequest();
+  }
+});
+
+hostRequestsList?.addEventListener('click', (event) => {
+  const target = event.target.closest('button[data-action][data-id]');
+  if (!target) return;
+  const reqId = Number(target.dataset.id);
+  const action = target.dataset.action;
+  if (!reqId || !action) return;
+  handleGuestRequestAction(reqId, action);
+});
 
 // Init
 fetchReservation();
