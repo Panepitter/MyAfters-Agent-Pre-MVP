@@ -115,7 +115,7 @@ const renderMessages = () => {
 
 const DEFAULT_CENTER = { lat: 45.4642, lng: 9.19 };
 
-const buildGradientQr = (element, text, size = 120) => {
+const buildGradientQr = (element, text, size = 90) => {
   if (!window.QRCodeStyling || !element || !text) return false;
   element.innerHTML = '';
   const qr = new QRCodeStyling({
@@ -124,26 +124,28 @@ const buildGradientQr = (element, text, size = 120) => {
     type: 'svg',
     data: text,
     margin: 0,
+    qrOptions: {
+      errorCorrectionLevel: 'L'
+    },
     dotsOptions: {
-      type: 'dots',
+      type: 'rounded',
       gradient: {
         type: 'linear',
-        rotation: 0.8,
+        rotation: 0.7,
         colorStops: [
-          { offset: 0, color: '#7c3aed' },
-          { offset: 0.35, color: '#ec4899' },
-          { offset: 0.7, color: '#22d3ee' },
-          { offset: 1, color: '#22c55e' }
+          { offset: 0, color: '#8b5cf6' },
+          { offset: 0.5, color: '#ec4899' },
+          { offset: 1, color: '#06b6d4' }
         ]
       }
     },
     cornersSquareOptions: {
       type: 'extra-rounded',
-      color: '#c084fc'
+      color: '#a78bfa'
     },
     cornersDotOptions: {
       type: 'dot',
-      color: '#38bdf8'
+      color: '#22d3ee'
     },
     backgroundOptions: {
       color: 'transparent'
@@ -489,36 +491,66 @@ const buildReservationOverlayHtml = (payload) => {
   const status = payload.status || reservation.status || 'pending';
   const date = reservation.reservation_datetime ? new Date(reservation.reservation_datetime).toLocaleString('it-IT') : '—';
   const venueInfo = reservation.venue_id ? `Locale #${reservation.venue_id}` : 'Locale selezionato';
-  const reservationUrl = payload.reservation_url || '#';
-  const hostPasscode = payload.host_passcode ? `Codice creator: ${payload.host_passcode}` : '';
+  const hostUrl = payload.reservation_url || '#';
+  const guestUrl = payload.guest_url || '';
+  const hostPasscode = payload.host_passcode || '';
   const tableLabel = reservation.table_number || '—';
+
+  const statusLabel = {
+    pending: 'In attesa',
+    accepted: 'Confermata',
+    rejected: 'Rifiutata'
+  }[status] || status;
 
   return {
     html: `
       <div class="cp-message-overlay">
-        <a class="cp-reservation-bubble" href="${reservationUrl}" target="_blank" rel="noopener">
-          <div class="cp-bubble-header">
-            <div>
-              <div class="cp-widget-title">Prenotazione ${status}</div>
-              <div class="cp-widget-subtitle">${venueInfo} · ${date}</div>
+        <div class="cp-reservation-bubble-v2">
+          <div class="cp-bubble-arrow"></div>
+          <div class="cp-bubble-header-v2">
+            <div class="cp-bubble-icon">🎉</div>
+            <div class="cp-bubble-title-group">
+              <div class="cp-bubble-title">Tavolo ${tableLabel}</div>
+              <div class="cp-bubble-venue">${venueInfo} · ${date}</div>
             </div>
-            <div class="cp-widget-subtitle">Tavolo ${tableLabel}</div>
+            <span class="cp-status-pill ${status}">${statusLabel}</span>
           </div>
-          <div class="cp-reservation-card">
-            <div class="cp-reservation-details">
-              <strong>${reservation.user_name || 'Ospite'}</strong>
-              <span>Telefono: ${reservation.user_phone || '—'}</span>
-              <span>Persone: ${reservation.party_size || '—'}</span>
-              <span>ID prenotazione: ${reservation.id || '—'}</span>
-              ${hostPasscode ? `<span class=\"cp-reservation-pass\">${hostPasscode}</span>` : ''}
-              <span class="cp-reservation-link">Apri gestione prenotazione →</span>
+          
+          <div class="cp-bubble-body">
+            <div class="cp-bubble-info">
+              <div class="cp-bubble-row">
+                <span class="cp-bubble-label">Intestatario</span>
+                <span class="cp-bubble-value">${reservation.user_name || 'Ospite'}</span>
+              </div>
+              <div class="cp-bubble-row">
+                <span class="cp-bubble-label">Persone</span>
+                <span class="cp-bubble-value">${reservation.party_size || '—'}</span>
+              </div>
+              <div class="cp-bubble-row">
+                <span class="cp-bubble-label">Telefono</span>
+                <span class="cp-bubble-value">${reservation.user_phone || '—'}</span>
+              </div>
             </div>
-            <div class="cp-qr cp-qr-branded" data-qr="${payload.guest_url || ''}" data-qr-size="120"></div>
+            
+            <div class="cp-bubble-qr-section">
+              <div class="cp-bubble-qr" data-qr="${guestUrl}" data-qr-size="90"></div>
+              <div class="cp-bubble-qr-hint">Scansiona per invitare</div>
+            </div>
           </div>
-        </a>
+          
+          <div class="cp-bubble-footer">
+            <div class="cp-bubble-passcode">
+              <span class="cp-bubble-passcode-label">🔑 Codice creator</span>
+              <span class="cp-bubble-passcode-value">${hostPasscode}</span>
+            </div>
+            <a class="cp-bubble-manage-btn" href="${hostUrl}" target="_blank" rel="noopener">
+              Gestisci tavolo →
+            </a>
+          </div>
+        </div>
       </div>
     `,
-    reservationUrl,
+    reservationUrl: hostUrl,
     tableLabel
   };
 };

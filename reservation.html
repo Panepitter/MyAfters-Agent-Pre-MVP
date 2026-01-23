@@ -7,7 +7,301 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    .cp-res-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .cp-res-content {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+    .cp-res-card {
+      max-width: 480px;
+      margin: 0 auto;
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 27, 75, 0.85));
+      border: 1px solid rgba(129, 140, 248, 0.25);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+    }
+    .cp-res-hero {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(168, 85, 247, 0.2));
+      padding: 1.5rem;
+      text-align: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .cp-res-hero-icon {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+    }
+    .cp-res-hero-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 0.25rem;
+    }
+    .cp-res-hero-sub {
+      font-size: 0.85rem;
+      color: var(--cp-text-muted);
+    }
+    .cp-res-role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.75rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .cp-res-role-badge.host {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.2));
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      color: #bbf7d0;
+    }
+    .cp-res-role-badge.guest {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(99, 102, 241, 0.2));
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #bfdbfe;
+    }
+    .cp-res-body {
+      padding: 1.25rem;
+    }
+    .cp-res-section {
+      margin-bottom: 1.25rem;
+    }
+    .cp-res-section:last-child {
+      margin-bottom: 0;
+    }
+    .cp-res-section-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cp-text-muted);
+      margin-bottom: 0.65rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .cp-res-info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.65rem;
+    }
+    .cp-res-info-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 0.65rem 0.85rem;
+    }
+    .cp-res-info-label {
+      font-size: 0.65rem;
+      color: var(--cp-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.2rem;
+    }
+    .cp-res-info-value {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #e2e8f0;
+    }
+    .cp-res-qr-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+    }
+    .cp-res-qr {
+      width: 180px;
+      height: 180px;
+      border-radius: 16px;
+      background: rgba(15, 15, 20, 0.5);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cp-res-qr svg,
+    .cp-res-qr canvas {
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: 8px;
+    }
+    .cp-res-qr-hint {
+      font-size: 0.75rem;
+      color: var(--cp-text-muted);
+      text-align: center;
+    }
+    .cp-res-link {
+      display: block;
+      padding: 0.5rem 0.75rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      font-size: 0.72rem;
+      color: #c7d2fe;
+      word-break: break-all;
+      text-align: center;
+    }
+    .cp-res-link a {
+      color: inherit;
+      text-decoration: underline;
+    }
+    .cp-res-passcode-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.85rem 1rem;
+      background: linear-gradient(135deg, rgba(254, 243, 199, 0.08), rgba(251, 191, 36, 0.05));
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      border-radius: 12px;
+    }
+    .cp-res-passcode-label {
+      font-size: 0.75rem;
+      color: #fef3c7;
+    }
+    .cp-res-passcode-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fef3c7;
+      letter-spacing: 0.15em;
+    }
+    .cp-res-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .cp-res-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+    .cp-res-btn-primary {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
+    }
+    .cp-res-btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(34, 197, 94, 0.4);
+    }
+    .cp-res-btn-danger {
+      background: rgba(248, 113, 113, 0.15);
+      border: 1px solid rgba(248, 113, 113, 0.4);
+      color: #fecaca;
+    }
+    .cp-res-btn-danger:hover:not(:disabled) {
+      background: rgba(248, 113, 113, 0.25);
+    }
+    .cp-res-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .cp-res-unlock-form {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .cp-res-unlock-form input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--cp-border);
+      border-radius: 10px;
+      padding: 0.6rem 0.85rem;
+      color: var(--cp-text-main);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.1em;
+    }
+    .cp-res-unlock-form input:focus {
+      outline: none;
+      border-color: var(--cp-primary);
+    }
+    .cp-res-guest-notice {
+      text-align: center;
+      padding: 1rem;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 12px;
+    }
+    .cp-res-guest-notice-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .cp-res-guest-notice-text {
+      font-size: 0.85rem;
+      color: #bfdbfe;
+    }
+    .cp-res-guest-notice-sub {
+      font-size: 0.75rem;
+      color: var(--cp-text-muted);
+      margin-top: 0.35rem;
+    }
+    .cp-res-status-accepted .cp-res-guest-notice {
+      background: rgba(34, 197, 94, 0.1);
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+    .cp-res-status-accepted .cp-res-guest-notice-text {
+      color: #bbf7d0;
+    }
+    .cp-res-status-rejected .cp-res-guest-notice {
+      background: rgba(248, 113, 113, 0.1);
+      border-color: rgba(248, 113, 113, 0.3);
+    }
+    .cp-res-status-rejected .cp-res-guest-notice-text {
+      color: #fecaca;
+    }
+    @media (max-width: 500px) {
+      .cp-res-content {
+        padding: 1rem;
+      }
+      .cp-res-card {
+        border-radius: 20px;
+      }
+      .cp-res-hero {
+        padding: 1.25rem 1rem;
+      }
+      .cp-res-hero-icon {
+        font-size: 2.5rem;
+      }
+      .cp-res-hero-title {
+        font-size: 1.25rem;
+      }
+      .cp-res-body {
+        padding: 1rem;
+      }
+      .cp-res-info-grid {
+        grid-template-columns: 1fr;
+      }
+      .cp-res-qr {
+        width: 160px;
+        height: 160px;
+      }
+      .cp-res-unlock-form {
+        flex-direction: column;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="cp-background">
@@ -15,7 +309,7 @@
     <div class="cp-glow cp-glow-right"></div>
   </div>
 
-  <main class="cp-shell cp-reservation-shell">
+  <main class="cp-shell cp-res-page">
     <header class="cp-header">
       <div class="cp-brand">
         <div class="cp-icon">✨</div>
@@ -29,37 +323,78 @@
       </div>
     </header>
 
-    <section class="cp-panel cp-panel-profile cp-reservation-panel">
-      <div class="cp-profile-card" id="reservationCard">
-        <div class="cp-profile-header">
-          <div>
-            <div class="cp-profile-title" id="reservationTitle">Prenotazione tavolo</div>
-            <div class="cp-profile-subtitle" id="reservationSubtitle">Caricamento dettagli...</div>
-          </div>
-          <span class="cp-status-pill" id="reservationStatus">—</span>
+    <section class="cp-res-content">
+      <div class="cp-res-card" id="reservationCard">
+        <div class="cp-res-hero">
+          <div class="cp-res-hero-icon" id="heroIcon">🎉</div>
+          <div class="cp-res-hero-title" id="heroTitle">Tavolo —</div>
+          <div class="cp-res-hero-sub" id="heroSub">Caricamento...</div>
+          <span class="cp-status-pill" id="statusPill">—</span>
+          <div class="cp-res-role-badge" id="roleBadge" hidden></div>
         </div>
 
-        <div class="cp-profile-body">
-          <div class="cp-profile-grid">
-            <div class="cp-profile-block">
-              <div class="cp-profile-label">Dettagli tavolo</div>
-              <div class="cp-reservation-details" id="reservationDetails"></div>
+        <div class="cp-res-body" id="resBody">
+          <!-- Host View -->
+          <div id="hostView" hidden>
+            <div class="cp-res-section">
+              <div class="cp-res-section-title">📋 Dettagli prenotazione</div>
+              <div class="cp-res-info-grid" id="infoGrid"></div>
             </div>
-            <div class="cp-profile-block">
-              <div class="cp-profile-label">QR code accesso ospiti</div>
-              <div class="cp-qr cp-reservation-qr cp-qr-branded" id="qrWrapper"></div>
-              <div class="cp-reservation-link" id="guestLink"></div>
+
+            <div class="cp-res-section">
+              <div class="cp-res-section-title">🔐 Codice creator</div>
+              <div class="cp-res-passcode-box">
+                <span class="cp-res-passcode-label">Usa questo codice per gestire il tavolo</span>
+                <span class="cp-res-passcode-value" id="passcodeValue">—</span>
+              </div>
+            </div>
+
+            <div class="cp-res-section">
+              <div class="cp-res-section-title">📱 QR Code per invitare ospiti</div>
+              <div class="cp-res-qr-wrapper">
+                <div class="cp-res-qr" id="qrWrapper"></div>
+                <div class="cp-res-qr-hint">Fai scansionare questo QR ai tuoi amici per unirsi al tavolo</div>
+                <div class="cp-res-link" id="guestLinkBox"></div>
+              </div>
+            </div>
+
+            <div class="cp-res-section" id="hostActionsSection" hidden>
+              <div class="cp-res-section-title">⚡ Azioni</div>
+              <div class="cp-res-actions">
+                <button class="cp-res-btn cp-res-btn-primary" id="acceptBtn">✓ Accetta richiesta ospite</button>
+                <button class="cp-res-btn cp-res-btn-danger" id="rejectBtn">✕ Rifiuta richiesta</button>
+              </div>
             </div>
           </div>
 
-          <div class="cp-profile-actions" id="hostActions" hidden>
-            <button class="cp-send" id="acceptBtn">Accetta accesso</button>
-            <button class="cp-ghost" id="rejectBtn">Rifiuta accesso</button>
+          <!-- Guest View -->
+          <div id="guestView" hidden>
+            <div class="cp-res-section">
+              <div class="cp-res-section-title">📋 Dettagli tavolo</div>
+              <div class="cp-res-info-grid" id="guestInfoGrid"></div>
+            </div>
+
+            <div class="cp-res-section cp-res-status-pending" id="guestNoticeSection">
+              <div class="cp-res-guest-notice" id="guestNotice">
+                <div class="cp-res-guest-notice-icon">⏳</div>
+                <div class="cp-res-guest-notice-text">Richiesta in attesa di approvazione</div>
+                <div class="cp-res-guest-notice-sub">Il creatore del tavolo deve accettare la tua richiesta</div>
+              </div>
+            </div>
           </div>
 
-          <div class="cp-profile-actions" id="hostUnlock" hidden>
-            <input id="hostPasscode" type="text" placeholder="Codice creator" />
-            <button class="cp-send" id="unlockBtn">Sblocca gestione</button>
+          <!-- Unlock View (for host without passcode) -->
+          <div id="unlockView" hidden>
+            <div class="cp-res-section">
+              <div class="cp-res-section-title">🔑 Sblocca gestione tavolo</div>
+              <p style="font-size: 0.85rem; color: var(--cp-text-muted); margin-bottom: 0.75rem;">
+                Inserisci il codice creator per accedere alla gestione del tavolo.
+              </p>
+              <div class="cp-res-unlock-form">
+                <input id="passcodeInput" type="text" placeholder="Codice creator" maxlength="10" />
+                <button class="cp-res-btn cp-res-btn-primary" id="unlockBtn">Sblocca</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -1,151 +1,319 @@
 const API_BASE = window.location.origin;
 
-const reservationTitle = document.getElementById('reservationTitle');
-const reservationSubtitle = document.getElementById('reservationSubtitle');
-const reservationStatus = document.getElementById('reservationStatus');
-const reservationDetails = document.getElementById('reservationDetails');
+// DOM Elements
+const heroIcon = document.getElementById('heroIcon');
+const heroTitle = document.getElementById('heroTitle');
+const heroSub = document.getElementById('heroSub');
+const statusPill = document.getElementById('statusPill');
+const roleBadge = document.getElementById('roleBadge');
+const hostView = document.getElementById('hostView');
+const guestView = document.getElementById('guestView');
+const unlockView = document.getElementById('unlockView');
+const infoGrid = document.getElementById('infoGrid');
+const guestInfoGrid = document.getElementById('guestInfoGrid');
+const passcodeValue = document.getElementById('passcodeValue');
 const qrWrapper = document.getElementById('qrWrapper');
-const guestLink = document.getElementById('guestLink');
-const hostActions = document.getElementById('hostActions');
-const hostUnlock = document.getElementById('hostUnlock');
-const hostPasscodeInput = document.getElementById('hostPasscode');
-const unlockBtn = document.getElementById('unlockBtn');
+const guestLinkBox = document.getElementById('guestLinkBox');
+const hostActionsSection = document.getElementById('hostActionsSection');
 const acceptBtn = document.getElementById('acceptBtn');
 const rejectBtn = document.getElementById('rejectBtn');
+const guestNoticeSection = document.getElementById('guestNoticeSection');
+const guestNotice = document.getElementById('guestNotice');
+const passcodeInput = document.getElementById('passcodeInput');
+const unlockBtn = document.getElementById('unlockBtn');
 
+// URL params
 const params = new URLSearchParams(window.location.search);
 const token = params.get('token');
 const roleParam = params.get('role');
 
+// State
+let currentData = null;
+
 const formatDate = (value) => {
   if (!value) return '—';
   try {
-    return new Date(value).toLocaleString('it-IT');
+    return new Date(value).toLocaleString('it-IT', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   } catch (err) {
     return value;
   }
 };
 
-const renderReservation = (payload) => {
-  const reservation = payload.reservation || {};
-  reservationTitle.textContent = `Tavolo ${reservation.table_number || '—'}`;
-  reservationSubtitle.textContent = `Locale #${reservation.venue_id || '—'} · ${formatDate(reservation.reservation_datetime)}`;
-  const status = (payload.status || reservation.status || 'pending').toLowerCase();
-  reservationStatus.textContent = status.toUpperCase();
-  reservationStatus.className = `cp-status-pill ${status}`;
-
-  const accessLine = payload.role === 'guest' && status !== 'accepted'
-    ? `<span class="cp-reservation-warning">Accesso in attesa di approvazione</span>`
-    : '';
-
-  reservationDetails.innerHTML = `
-    <strong>${reservation.user_name || 'Ospite'}</strong>
-    <span>Telefono: ${reservation.user_phone || '—'}</span>
-    <span>Persone: ${reservation.party_size || '—'}</span>
-    <span>ID prenotazione: ${reservation.id || '—'}</span>
-    ${accessLine}
-  `;
-
-  if (payload.guest_url && window.QRCodeStyling) {
-    qrWrapper.innerHTML = '';
-    const qr = new QRCodeStyling({
-      width: 240,
-      height: 240,
-      type: 'svg',
-      data: payload.guest_url,
-      margin: 0,
-      dotsOptions: {
-        type: 'dots',
-        gradient: {
-          type: 'linear',
-          rotation: 0.8,
-          colorStops: [
-            { offset: 0, color: '#7c3aed' },
-            { offset: 0.35, color: '#ec4899' },
-            { offset: 0.7, color: '#22d3ee' },
-            { offset: 1, color: '#22c55e' }
-          ]
-        }
-      },
-      cornersSquareOptions: {
-        type: 'extra-rounded',
-        color: '#c084fc'
-      },
-      cornersDotOptions: {
-        type: 'dot',
-        color: '#38bdf8'
-      },
-      backgroundOptions: {
-        color: 'transparent'
+const buildGradientQr = (element, text, size = 160) => {
+  if (!window.QRCodeStyling || !element || !text) return false;
+  element.innerHTML = '';
+  const qr = new QRCodeStyling({
+    width: size,
+    height: size,
+    type: 'svg',
+    data: text,
+    margin: 0,
+    dotsOptions: {
+      type: 'dots',
+      gradient: {
+        type: 'linear',
+        rotation: 0.8,
+        colorStops: [
+          { offset: 0, color: '#7c3aed' },
+          { offset: 0.35, color: '#ec4899' },
+          { offset: 0.7, color: '#22d3ee' },
+          { offset: 1, color: '#22c55e' }
+        ]
       }
-    });
-    qr.append(qrWrapper);
-  } else {
-    qrWrapper.innerHTML = payload.qrcode_url ? `<img src="${payload.qrcode_url}" alt="QR Code" />` : 'QR non disponibile';
-  }
-  if (payload.guest_url) {
-    guestLink.innerHTML = `Link ospiti: <a href="${payload.guest_url}" target="_blank" rel="noopener">${payload.guest_url}</a>`;
-  }
+    },
+    cornersSquareOptions: {
+      type: 'extra-rounded',
+      color: '#c084fc'
+    },
+    cornersDotOptions: {
+      type: 'dot',
+      color: '#38bdf8'
+    },
+    backgroundOptions: {
+      color: 'transparent'
+    }
+  });
+  qr.append(element);
+  return true;
+};
 
-  const needsUnlock = payload.requires_passcode && payload.role !== 'host';
-  hostUnlock.hidden = !(roleParam === 'host' && needsUnlock);
-  hostActions.hidden = payload.role !== 'host';
-  if (payload.host_passcode && payload.role === 'host') {
-    hostPasscodeInput.value = payload.host_passcode;
-    hostPasscodeInput.setAttribute('readonly', 'readonly');
+const renderInfoGrid = (container, reservation) => {
+  const items = [
+    { label: 'Intestatario', value: reservation.user_name || 'Ospite' },
+    { label: 'Persone', value: reservation.party_size || '—' },
+    { label: 'Telefono', value: reservation.user_phone || '—' },
+    { label: 'Data/Ora', value: formatDate(reservation.reservation_datetime) },
+    { label: 'Locale', value: `#${reservation.venue_id || '—'}` },
+    { label: 'ID', value: reservation.id || '—' }
+  ];
+  
+  container.innerHTML = items.map(item => `
+    <div class="cp-res-info-item">
+      <div class="cp-res-info-label">${item.label}</div>
+      <div class="cp-res-info-value">${item.value}</div>
+    </div>
+  `).join('');
+};
+
+const updateStatusDisplay = (status) => {
+  const statusConfig = {
+    pending: { label: 'In attesa', class: 'pending', icon: '⏳' },
+    accepted: { label: 'Confermata', class: 'accepted', icon: '✓' },
+    rejected: { label: 'Rifiutata', class: 'rejected', icon: '✕' }
+  };
+  
+  const config = statusConfig[status] || statusConfig.pending;
+  statusPill.textContent = config.label;
+  statusPill.className = `cp-status-pill ${config.class}`;
+  return config;
+};
+
+const renderHostView = (data) => {
+  const reservation = data.reservation || {};
+  
+  // Hero
+  heroIcon.textContent = '🎉';
+  heroTitle.textContent = `Tavolo ${reservation.table_number || '—'}`;
+  heroSub.textContent = `Locale #${reservation.venue_id || '—'} · ${formatDate(reservation.reservation_datetime)}`;
+  updateStatusDisplay(data.status);
+  
+  // Role badge
+  roleBadge.textContent = '👑 Creator';
+  roleBadge.className = 'cp-res-role-badge host';
+  roleBadge.hidden = false;
+  
+  // Info grid
+  renderInfoGrid(infoGrid, reservation);
+  
+  // Passcode
+  passcodeValue.textContent = data.host_passcode || '—';
+  
+  // QR Code
+  if (data.guest_url) {
+    buildGradientQr(qrWrapper, data.guest_url, 160);
+    guestLinkBox.innerHTML = `<a href="${data.guest_url}" target="_blank">${data.guest_url}</a>`;
+  }
+  
+  // Actions (show only if there are pending requests - for now always hidden since we don't track individual guest requests)
+  hostActionsSection.hidden = true;
+  
+  // Show host view
+  hostView.hidden = false;
+  guestView.hidden = true;
+  unlockView.hidden = true;
+};
+
+const renderGuestView = (data) => {
+  const reservation = data.reservation || {};
+  const status = data.status || 'pending';
+  
+  // Hero
+  heroIcon.textContent = status === 'accepted' ? '🎊' : status === 'rejected' ? '😔' : '🎟️';
+  heroTitle.textContent = `Tavolo ${reservation.table_number || '—'}`;
+  heroSub.textContent = `Locale #${reservation.venue_id || '—'} · ${formatDate(reservation.reservation_datetime)}`;
+  updateStatusDisplay(status);
+  
+  // Role badge
+  roleBadge.textContent = '🎫 Ospite';
+  roleBadge.className = 'cp-res-role-badge guest';
+  roleBadge.hidden = false;
+  
+  // Info grid (limited info for guests)
+  const guestItems = [
+    { label: 'Tavolo', value: reservation.table_number || '—' },
+    { label: 'Persone', value: reservation.party_size || '—' },
+    { label: 'Data/Ora', value: formatDate(reservation.reservation_datetime) },
+    { label: 'Locale', value: `#${reservation.venue_id || '—'}` }
+  ];
+  
+  guestInfoGrid.innerHTML = guestItems.map(item => `
+    <div class="cp-res-info-item">
+      <div class="cp-res-info-label">${item.label}</div>
+      <div class="cp-res-info-value">${item.value}</div>
+    </div>
+  `).join('');
+  
+  // Guest notice based on status
+  const noticeConfig = {
+    pending: {
+      icon: '⏳',
+      text: 'Richiesta in attesa di approvazione',
+      sub: 'Il creatore del tavolo deve accettare la tua richiesta',
+      class: 'cp-res-status-pending'
+    },
+    accepted: {
+      icon: '🎉',
+      text: 'Sei stato accettato al tavolo!',
+      sub: 'Presentati al locale con questo QR code',
+      class: 'cp-res-status-accepted'
+    },
+    rejected: {
+      icon: '😔',
+      text: 'Richiesta non accettata',
+      sub: 'Il creatore del tavolo ha rifiutato la richiesta',
+      class: 'cp-res-status-rejected'
+    }
+  };
+  
+  const notice = noticeConfig[status] || noticeConfig.pending;
+  guestNoticeSection.className = `cp-res-section ${notice.class}`;
+  guestNotice.innerHTML = `
+    <div class="cp-res-guest-notice-icon">${notice.icon}</div>
+    <div class="cp-res-guest-notice-text">${notice.text}</div>
+    <div class="cp-res-guest-notice-sub">${notice.sub}</div>
+  `;
+  
+  // Show guest view
+  hostView.hidden = true;
+  guestView.hidden = false;
+  unlockView.hidden = true;
+};
+
+const renderUnlockView = (data) => {
+  const reservation = data.reservation || {};
+  
+  // Hero
+  heroIcon.textContent = '🔐';
+  heroTitle.textContent = `Tavolo ${reservation.table_number || '—'}`;
+  heroSub.textContent = 'Inserisci il codice creator per gestire';
+  updateStatusDisplay(data.status);
+  
+  roleBadge.hidden = true;
+  
+  // Show unlock view
+  hostView.hidden = true;
+  guestView.hidden = true;
+  unlockView.hidden = false;
+};
+
+const renderReservation = (data) => {
+  currentData = data;
+  const role = data.role;
+  const requiresPasscode = data.requires_passcode;
+  
+  if (role === 'host') {
+    renderHostView(data);
+  } else if (roleParam === 'host' && requiresPasscode) {
+    renderUnlockView(data);
+  } else {
+    renderGuestView(data);
   }
 };
 
 const fetchReservation = async () => {
   if (!token) {
-    reservationSubtitle.textContent = 'Token mancante. Usa il link del QR code.';
+    heroSub.textContent = 'Token mancante. Usa il link del QR code.';
     return;
   }
+  
   try {
+    // Check for stored passcode
     const storedPasscode = localStorage.getItem(`myafters_host_pass_${token}`);
-    if (storedPasscode && !hostPasscodeInput.value) {
-      hostPasscodeInput.value = storedPasscode;
-    }
-    const query = hostPasscodeInput.value ? `?passcode=${encodeURIComponent(hostPasscodeInput.value)}` : '';
+    const inputPasscode = passcodeInput?.value || '';
+    const passcode = inputPasscode || storedPasscode || '';
+    
+    const query = passcode ? `?passcode=${encodeURIComponent(passcode)}` : '';
     const resp = await fetch(`${API_BASE}/api/reservations/${token}${query}`);
+    
     if (!resp.ok) {
-      reservationSubtitle.textContent = 'Prenotazione non trovata.';
+      heroSub.textContent = 'Prenotazione non trovata.';
       return;
     }
+    
     const data = await resp.json();
     renderReservation(data);
   } catch (err) {
-    reservationSubtitle.textContent = 'Errore nel caricamento della prenotazione.';
+    heroSub.textContent = 'Errore nel caricamento della prenotazione.';
+    console.error(err);
   }
 };
 
 const updateStatus = async (action) => {
-  if (!token) return;
+  if (!token || !currentData) return;
+  
   acceptBtn.disabled = true;
   rejectBtn.disabled = true;
+  
   try {
-    const passcode = hostPasscodeInput.value || localStorage.getItem(`myafters_host_pass_${token}`) || '';
+    const passcode = passcodeInput?.value || localStorage.getItem(`myafters_host_pass_${token}`) || '';
     const query = passcode ? `?passcode=${encodeURIComponent(passcode)}` : '';
     const resp = await fetch(`${API_BASE}/api/reservations/${token}/${action}${query}`, { method: 'POST' });
+    
     if (resp.ok) {
       const data = await resp.json();
       renderReservation(data);
     }
   } catch (err) {
-    // ignore
+    console.error(err);
   } finally {
     acceptBtn.disabled = false;
     rejectBtn.disabled = false;
   }
 };
 
-unlockBtn.addEventListener('click', () => {
-  if (!hostPasscodeInput.value) return;
-  localStorage.setItem(`myafters_host_pass_${token}`, hostPasscodeInput.value);
+// Event listeners
+unlockBtn?.addEventListener('click', () => {
+  const code = passcodeInput?.value?.trim();
+  if (!code) return;
+  
+  localStorage.setItem(`myafters_host_pass_${token}`, code);
   fetchReservation();
 });
 
-acceptBtn.addEventListener('click', () => updateStatus('accept'));
-rejectBtn.addEventListener('click', () => updateStatus('reject'));
+passcodeInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    unlockBtn?.click();
+  }
+});
 
+acceptBtn?.addEventListener('click', () => updateStatus('accept'));
+rejectBtn?.addEventListener('click', () => updateStatus('reject'));
+
+// Init
 fetchReservation();
