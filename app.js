@@ -234,8 +234,22 @@ const setCoordinates = (lat, lng, shouldFly = true) => {
   profileLng.value = profileState.lng !== null ? profileState.lng.toFixed(4) : '';
 
   if (mapInstance && profileState.lat !== null && profileState.lng !== null) {
+    const profileIcon = L.divIcon({ 
+      className: 'cp-profile-marker', 
+      html: '<div></div>', 
+      iconSize: [18, 18] 
+    });
     if (!mapMarker) {
-      mapMarker = L.marker([profileState.lat, profileState.lng]).addTo(mapInstance);
+      mapMarker = L.marker([profileState.lat, profileState.lng], { icon: profileIcon, draggable: true }).addTo(mapInstance);
+      mapMarker.on('dragend', async (e) => {
+        const ll = e.target.getLatLng();
+        setCoordinates(ll.lat, ll.lng, false);
+        const address = await reverseGeocode(ll.lat, ll.lng);
+        if (address) {
+          profileAddress.value = address;
+          syncProfileState();
+        }
+      });
     } else {
       mapMarker.setLatLng([profileState.lat, profileState.lng]);
     }
@@ -313,14 +327,31 @@ const initMap = () => {
   if (!window.L || mapInstance) return;
   const startLat = profileState.lat ?? DEFAULT_CENTER.lat;
   const startLng = profileState.lng ?? DEFAULT_CENTER.lng;
-  mapInstance = L.map(profileMap, { zoomControl: true }).setView([startLat, startLng], 12);
+  mapInstance = L.map(profileMap, { zoomControl: false, attributionControl: false }).setView([startLat, startLng], 12);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap'
+  // Dark theme map (same as Uber widget)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19
   }).addTo(mapInstance);
 
+  // Custom marker icon
+  const profileIcon = L.divIcon({ 
+    className: 'cp-profile-marker', 
+    html: '<div></div>', 
+    iconSize: [18, 18] 
+  });
+
   if (profileState.lat !== null && profileState.lng !== null) {
-    mapMarker = L.marker([profileState.lat, profileState.lng]).addTo(mapInstance);
+    mapMarker = L.marker([profileState.lat, profileState.lng], { icon: profileIcon, draggable: true }).addTo(mapInstance);
+    mapMarker.on('dragend', async (e) => {
+      const ll = e.target.getLatLng();
+      setCoordinates(ll.lat, ll.lng, false);
+      const address = await reverseGeocode(ll.lat, ll.lng);
+      if (address) {
+        profileAddress.value = address;
+        syncProfileState();
+      }
+    });
   }
 
   mapInstance.on('click', async (event) => {
@@ -569,16 +600,11 @@ const buildUberEmbedHtml = (payload) => {
   const ride = payload.ride || {};
   const widgetId = `uber-widget-${Date.now()}`;
   
-  const pickupLat = payload.pickup_lat ?? profileState.lat ?? null;
-  const pickupLng = payload.pickup_lng ?? profileState.lng ?? null;
+  // Usa indirizzo profilo come fallback per pickup
   const pickupAddr = payload.pickup_address || profileState.address || '';
-  const dropoffLat = payload.dropoff_lat ?? null;
-  const dropoffLng = payload.dropoff_lng ?? null;
   const dropoffAddr = payload.dropoff_address || '';
   
   const eta = ride.eta_minutes ?? Math.floor(Math.random() * 5) + 2;
-  const distance = ride.distance_km ?? 0;
-  const duration = ride.duration_minutes ?? 0;
   const priceLow = ride.price_low ?? 8;
   const priceHigh = ride.price_high ?? 14;
   const rideId = ride.id || `UB-${Math.floor(Math.random() * 9000) + 1000}`;
@@ -609,10 +635,8 @@ const buildUberEmbedHtml = (payload) => {
 
   return `
     <div class="cp-uber-widget" id="${widgetId}" 
-         data-pickup-lat="${pickupLat || ''}" 
-         data-pickup-lng="${pickupLng || ''}"
-         data-dropoff-lat="${dropoffLat || ''}"
-         data-dropoff-lng="${dropoffLng || ''}"
+         data-pickup-address="${pickupAddr}"
+         data-dropoff-address="${dropoffAddr}"
          data-link="${payload.link || '#'}">
       
       <div class="cp-uber-header">
@@ -673,12 +697,12 @@ const buildUberEmbedHtml = (payload) => {
 
       <div class="cp-uber-trip-info">
         <div class="cp-uber-trip-stat">
-          <span class="cp-uber-trip-value">${distance > 0 ? distance.toFixed(1) : '—'}</span>
+          <span class="cp-uber-trip-value cp-uber-distance">—</span>
           <span class="cp-uber-trip-label">km</span>
         </div>
         <div class="cp-uber-trip-divider"></div>
         <div class="cp-uber-trip-stat">
-          <span class="cp-uber-trip-value">${duration > 0 ? duration : '—'}</span>
+          <span class="cp-uber-trip-value cp-uber-duration">—</span>
           <span class="cp-uber-trip-label">min</span>
         </div>
         <div class="cp-uber-trip-divider"></div>
@@ -716,20 +740,52 @@ const buildUberEmbedHtml = (payload) => {
   `;
 };
 
-const initUberWidget = (widgetEl) => {
+const initUberWidget = async (widgetEl) => {
   if (!widgetEl || widgetEl.dataset.initialized === 'true') return;
   widgetEl.dataset.initialized = 'true';
 
   const mapContainer = widgetEl.querySelector('.cp-uber-map');
   if (!mapContainer || !window.L) return;
 
-  let pickupLat = parseFloat(widgetEl.dataset.pickupLat) || profileState.lat || 45.4642;
-  let pickupLng = parseFloat(widgetEl.dataset.pickupLng) || profileState.lng || 9.19;
-  let dropoffLat = parseFloat(widgetEl.dataset.dropoffLat) || null;
-  let dropoffLng = parseFloat(widgetEl.dataset.dropoffLng) || null;
+  // State
+  let pickupLat = profileState.lat || 45.4642;
+  let pickupLng = profileState.lng || 9.19;
+  let dropoffLat = null;
+  let dropoffLng = null;
+  let pickupMarker = null;
+  let dropoffMarker = null;
+  let routeLine = null;
 
+  const pickupInput = widgetEl.querySelector('[data-type="pickup"]');
+  const dropoffInput = widgetEl.querySelector('[data-type="dropoff"]');
+  const distanceEl = widgetEl.querySelector('.cp-uber-distance');
+  const durationEl = widgetEl.querySelector('.cp-uber-duration');
+
+  // Haversine distance
+  const haversineKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  // Update trip info
+  const updateTripInfo = () => {
+    if (pickupLat && dropoffLat) {
+      const dist = haversineKm(pickupLat, pickupLng, dropoffLat, dropoffLng);
+      const duration = Math.max(5, Math.round(dist * 3.5));
+      distanceEl.textContent = dist.toFixed(1);
+      durationEl.textContent = duration;
+    } else {
+      distanceEl.textContent = '—';
+      durationEl.textContent = '—';
+    }
+  };
+
+  // Init map
   const uberMap = L.map(mapContainer, { zoomControl: false, attributionControl: false })
-    .setView([pickupLat, pickupLng], 14);
+    .setView([pickupLat, pickupLng], 13);
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 19
@@ -738,90 +794,151 @@ const initUberWidget = (widgetEl) => {
   const pickupIcon = L.divIcon({ className: 'cp-uber-marker pickup', html: '<div></div>', iconSize: [16, 16] });
   const dropoffIcon = L.divIcon({ className: 'cp-uber-marker dropoff', html: '<div></div>', iconSize: [16, 16] });
 
-  let pickupMarker = L.marker([pickupLat, pickupLng], { icon: pickupIcon, draggable: true }).addTo(uberMap);
-  let dropoffMarker = null;
-  let routeLine = null;
-
-  if (dropoffLat && dropoffLng) {
-    dropoffMarker = L.marker([dropoffLat, dropoffLng], { icon: dropoffIcon, draggable: true }).addTo(uberMap);
-    drawRoute();
-  }
-
-  function drawRoute() {
+  // Draw route line
+  const drawRoute = () => {
     if (routeLine) uberMap.removeLayer(routeLine);
-    if (!dropoffMarker) return;
+    if (!pickupMarker || !dropoffMarker) return;
     const pll = pickupMarker.getLatLng();
     const dll = dropoffMarker.getLatLng();
     routeLine = L.polyline([[pll.lat, pll.lng], [dll.lat, dll.lng]], {
       color: '#276EF1', weight: 4, opacity: 0.8, dashArray: '8, 12'
     }).addTo(uberMap);
-    uberMap.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
-  }
+    uberMap.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+    updateTripInfo();
+  };
 
-  pickupMarker.on('dragend', async (e) => {
-    const ll = e.target.getLatLng();
-    widgetEl.dataset.pickupLat = ll.lat;
-    widgetEl.dataset.pickupLng = ll.lng;
-    const addr = await reverseGeocode(ll.lat, ll.lng);
-    if (addr) widgetEl.querySelector('[data-type="pickup"]').value = addr;
-    drawRoute();
-  });
-
-  const geoBtn = widgetEl.querySelector('[data-action="geolocate"]');
-  if (geoBtn) {
-    geoBtn.addEventListener('click', () => {
-      if (!navigator.geolocation) return;
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        pickupMarker.setLatLng([latitude, longitude]);
-        uberMap.setView([latitude, longitude], 15);
-        widgetEl.dataset.pickupLat = latitude;
-        widgetEl.dataset.pickupLng = longitude;
-        const addr = await reverseGeocode(latitude, longitude);
-        if (addr) widgetEl.querySelector('[data-type="pickup"]').value = addr;
+  // Set pickup marker
+  const setPickup = (lat, lng, addr) => {
+    pickupLat = lat;
+    pickupLng = lng;
+    if (addr && pickupInput) pickupInput.value = addr;
+    if (!pickupMarker) {
+      pickupMarker = L.marker([lat, lng], { icon: pickupIcon, draggable: true }).addTo(uberMap);
+      pickupMarker.on('dragend', async (e) => {
+        const ll = e.target.getLatLng();
+        pickupLat = ll.lat;
+        pickupLng = ll.lng;
+        const address = await reverseGeocode(ll.lat, ll.lng);
+        if (address && pickupInput) pickupInput.value = address;
         drawRoute();
       });
-    });
+    } else {
+      pickupMarker.setLatLng([lat, lng]);
+    }
+    if (!dropoffMarker) uberMap.setView([lat, lng], 14);
+    drawRoute();
+  };
+
+  // Set dropoff marker
+  const setDropoff = (lat, lng, addr) => {
+    dropoffLat = lat;
+    dropoffLng = lng;
+    if (addr && dropoffInput) dropoffInput.value = addr;
+    if (!dropoffMarker) {
+      dropoffMarker = L.marker([lat, lng], { icon: dropoffIcon, draggable: true }).addTo(uberMap);
+      dropoffMarker.on('dragend', async (e) => {
+        const ll = e.target.getLatLng();
+        dropoffLat = ll.lat;
+        dropoffLng = ll.lng;
+        const address = await reverseGeocode(ll.lat, ll.lng);
+        if (address && dropoffInput) dropoffInput.value = address;
+        drawRoute();
+      });
+    } else {
+      dropoffMarker.setLatLng([lat, lng]);
+    }
+    drawRoute();
+  };
+
+  // Geocode and set location
+  const geocodeAndSet = async (address, type) => {
+    if (!address || !address.trim()) return false;
+    const result = await geocodeAddress(address.trim());
+    if (!result) return false;
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    const displayAddr = result.display_name || address;
+    if (type === 'pickup') {
+      setPickup(lat, lng, displayAddr);
+    } else {
+      setDropoff(lat, lng, displayAddr);
+    }
+    return true;
+  };
+
+  // Initial geocoding from data attributes
+  const initialPickupAddr = widgetEl.dataset.pickupAddress || '';
+  const initialDropoffAddr = widgetEl.dataset.dropoffAddress || '';
+
+  // Use profile location as pickup fallback
+  if (profileState.lat && profileState.lng) {
+    setPickup(profileState.lat, profileState.lng, profileState.address || '');
   }
 
+  // Geocode initial addresses
+  if (initialPickupAddr) {
+    await geocodeAndSet(initialPickupAddr, 'pickup');
+  }
+  if (initialDropoffAddr) {
+    await geocodeAndSet(initialDropoffAddr, 'dropoff');
+  }
+
+  // Search buttons
   widgetEl.querySelectorAll('.cp-uber-search-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const target = btn.dataset.target;
       const input = widgetEl.querySelector(`[data-type="${target}"]`);
       if (!input || !input.value.trim()) return;
+      
       btn.disabled = true;
-      const result = await geocodeAddress(input.value.trim());
+      btn.innerHTML = '<span class="cp-uber-spinner-small"></span>';
+      
+      const success = await geocodeAndSet(input.value, target);
+      
       btn.disabled = false;
-      if (!result) return;
-      const lat = parseFloat(result.lat);
-      const lng = parseFloat(result.lon);
-      input.value = result.display_name || input.value;
-      if (target === 'pickup') {
-        pickupMarker.setLatLng([lat, lng]);
-        widgetEl.dataset.pickupLat = lat;
-        widgetEl.dataset.pickupLng = lng;
-        uberMap.setView([lat, lng], 15);
-      } else {
-        if (!dropoffMarker) {
-          dropoffMarker = L.marker([lat, lng], { icon: dropoffIcon, draggable: true }).addTo(uberMap);
-          dropoffMarker.on('dragend', async (e) => {
-            const ll = e.target.getLatLng();
-            widgetEl.dataset.dropoffLat = ll.lat;
-            widgetEl.dataset.dropoffLng = ll.lng;
-            const addr = await reverseGeocode(ll.lat, ll.lng);
-            if (addr) widgetEl.querySelector('[data-type="dropoff"]').value = addr;
-            drawRoute();
-          });
-        } else {
-          dropoffMarker.setLatLng([lat, lng]);
-        }
-        widgetEl.dataset.dropoffLat = lat;
-        widgetEl.dataset.dropoffLng = lng;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+      </svg>`;
+      
+      if (!success) {
+        input.style.borderColor = '#ef4444';
+        setTimeout(() => { input.style.borderColor = ''; }, 2000);
       }
-      drawRoute();
     });
   });
 
+  // Enter key on inputs
+  [pickupInput, dropoffInput].forEach((input) => {
+    if (!input) return;
+    input.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const type = input.dataset.type;
+        const btn = widgetEl.querySelector(`[data-target="${type}"]`);
+        if (btn) btn.click();
+      }
+    });
+  });
+
+  // Geolocation button
+  const geoBtn = widgetEl.querySelector('[data-action="geolocate"]');
+  if (geoBtn) {
+    geoBtn.addEventListener('click', () => {
+      if (!navigator.geolocation) return;
+      geoBtn.classList.add('loading');
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const addr = await reverseGeocode(latitude, longitude);
+          setPickup(latitude, longitude, addr || 'Posizione attuale');
+          geoBtn.classList.remove('loading');
+        },
+        () => { geoBtn.classList.remove('loading'); }
+      );
+    });
+  }
+
+  // Vehicle selection
   widgetEl.querySelectorAll('.cp-uber-vehicle').forEach((vBtn) => {
     vBtn.addEventListener('click', () => {
       widgetEl.querySelectorAll('.cp-uber-vehicle').forEach((b) => b.classList.remove('active'));
@@ -833,6 +950,7 @@ const initUberWidget = (widgetEl) => {
     });
   });
 
+  // Confirm button
   const confirmBtn = widgetEl.querySelector('[data-action="confirm"]');
   if (confirmBtn) {
     confirmBtn.addEventListener('click', () => {
