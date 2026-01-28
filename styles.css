@@ -907,6 +907,189 @@ textarea:focus {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.cp-uber-mock {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.1rem 1.2rem;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.65), rgba(15, 15, 18, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.cp-uber-map {
+  position: relative;
+  height: 150px;
+  border-radius: 16px;
+  background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.12), transparent 55%),
+    linear-gradient(135deg, rgba(26, 26, 28, 0.95), rgba(8, 8, 10, 0.95));
+  overflow: hidden;
+}
+
+.cp-uber-map::after {
+  content: '';
+  position: absolute;
+  inset: 18px;
+  border-radius: 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.cp-uber-map-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 2;
+}
+
+.cp-uber-map-pill {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.cp-uber-map-pill.light {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cp-uber-route {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.cp-uber-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #111827;
+  background: #22c55e;
+  z-index: 1;
+}
+
+.cp-uber-dot.destination {
+  background: #f97316;
+}
+
+.cp-uber-line {
+  width: 70px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.2), rgba(249, 115, 22, 0.9));
+}
+
+.cp-uber-locations {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.cp-uber-location {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cp-uber-location-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.cp-uber-location-value {
+  font-size: 0.92rem;
+  color: #f8fafc;
+}
+
+.cp-uber-options {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.cp-uber-option {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 0.7rem 0.9rem;
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: default;
+}
+
+.cp-uber-option.active {
+  background: rgba(0, 0, 0, 0.85);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.cp-uber-option-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.cp-uber-option-sub {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.cp-uber-option-price {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.cp-uber-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.8rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  padding: 0.75rem 0.9rem;
+}
+
+.cp-uber-summary-label {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cp-uber-summary-value {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.cp-uber-actions {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.cp-uber-cta {
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  background: #111827;
+  color: #f8fafc;
+  font-weight: 600;
+  cursor: default;
+}
+
+.cp-uber-disclaimer {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
 .cp-tabs {
   display: flex;
   gap: 0.75rem;
