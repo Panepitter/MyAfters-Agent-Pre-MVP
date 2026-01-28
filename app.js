@@ -111,6 +111,9 @@ const renderMessages = () => {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 
   enhanceQrCodes();
+  
+  // Initialize Uber widgets
+  document.querySelectorAll('.cp-uber-widget').forEach(initUberWidget);
 };
 
 const DEFAULT_CENTER = { lat: 45.4642, lng: 9.19 };
@@ -563,18 +566,288 @@ const buildReservationOverlayHtml = (payload) => {
 };
 
 const buildUberEmbedHtml = (payload) => {
-  return `
-    <div class="cp-widget cp-uber-embed">
-      <div class="cp-widget-header">
-        <div>
-          <div class="cp-widget-title">Prenota un Uber</div>
-          <div class="cp-widget-subtitle">Viaggio precompilato verso la serata</div>
+  const ride = payload.ride || {};
+  const widgetId = `uber-widget-${Date.now()}`;
+  
+  const pickupLat = payload.pickup_lat ?? profileState.lat ?? null;
+  const pickupLng = payload.pickup_lng ?? profileState.lng ?? null;
+  const pickupAddr = payload.pickup_address || profileState.address || '';
+  const dropoffLat = payload.dropoff_lat ?? null;
+  const dropoffLng = payload.dropoff_lng ?? null;
+  const dropoffAddr = payload.dropoff_address || '';
+  
+  const eta = ride.eta_minutes ?? Math.floor(Math.random() * 5) + 2;
+  const distance = ride.distance_km ?? 0;
+  const duration = ride.duration_minutes ?? 0;
+  const priceLow = ride.price_low ?? 8;
+  const priceHigh = ride.price_high ?? 14;
+  const rideId = ride.id || `UB-${Math.floor(Math.random() * 9000) + 1000}`;
+
+  const fmtPrice = (v) => `€${v.toFixed(2).replace('.', ',')}`;
+
+  const vehicles = [
+    { id: 'uberx', name: 'UberX', desc: '4 posti · Economica', icon: '🚗', mult: 1.0 },
+    { id: 'comfort', name: 'Comfort', desc: '4 posti · Spazio extra', icon: '🚙', mult: 1.35 },
+    { id: 'black', name: 'Black', desc: '4 posti · Premium', icon: '🖤', mult: 2.1 },
+    { id: 'green', name: 'Green', desc: '4 posti · Elettrica', icon: '🌿', mult: 1.15 }
+  ];
+
+  const vehicleCards = vehicles.map((v, i) => {
+    const low = priceLow * v.mult;
+    const high = priceHigh * v.mult;
+    return `
+      <button class="cp-uber-vehicle${i === 0 ? ' active' : ''}" data-vehicle="${v.id}">
+        <span class="cp-uber-vehicle-icon">${v.icon}</span>
+        <div class="cp-uber-vehicle-info">
+          <div class="cp-uber-vehicle-name">${v.name}</div>
+          <div class="cp-uber-vehicle-desc">${v.desc}</div>
         </div>
-        <a class="cp-action-btn" href="${payload.link || '#'}" target="_blank" rel="noopener">Apri Uber</a>
+        <div class="cp-uber-vehicle-price">${fmtPrice(low)} – ${fmtPrice(high)}</div>
+      </button>
+    `;
+  }).join('');
+
+  return `
+    <div class="cp-uber-widget" id="${widgetId}" 
+         data-pickup-lat="${pickupLat || ''}" 
+         data-pickup-lng="${pickupLng || ''}"
+         data-dropoff-lat="${dropoffLat || ''}"
+         data-dropoff-lng="${dropoffLng || ''}"
+         data-link="${payload.link || '#'}">
+      
+      <div class="cp-uber-header">
+        <div class="cp-uber-logo">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+          </svg>
+          <span>Uber</span>
+        </div>
+        <div class="cp-uber-eta">
+          <span class="cp-uber-eta-time">${eta}</span>
+          <span class="cp-uber-eta-label">min</span>
+        </div>
       </div>
-      ${payload.html || ''}
+
+      <div class="cp-uber-map-container">
+        <div class="cp-uber-map" id="${widgetId}-map"></div>
+        <div class="cp-uber-map-actions">
+          <button class="cp-uber-geo-btn" data-action="geolocate" title="Usa la mia posizione">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+              <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="cp-uber-locations">
+        <div class="cp-uber-location-row">
+          <div class="cp-uber-location-dot pickup"></div>
+          <div class="cp-uber-location-input-wrap">
+            <input type="text" class="cp-uber-location-input" data-type="pickup" 
+                   placeholder="Punto di partenza" value="${pickupAddr}">
+            <button class="cp-uber-search-btn" data-target="pickup">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="cp-uber-location-line"></div>
+        <div class="cp-uber-location-row">
+          <div class="cp-uber-location-dot dropoff"></div>
+          <div class="cp-uber-location-input-wrap">
+            <input type="text" class="cp-uber-location-input" data-type="dropoff" 
+                   placeholder="Destinazione" value="${dropoffAddr}">
+            <button class="cp-uber-search-btn" data-target="dropoff">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cp-uber-vehicles">
+        ${vehicleCards}
+      </div>
+
+      <div class="cp-uber-trip-info">
+        <div class="cp-uber-trip-stat">
+          <span class="cp-uber-trip-value">${distance > 0 ? distance.toFixed(1) : '—'}</span>
+          <span class="cp-uber-trip-label">km</span>
+        </div>
+        <div class="cp-uber-trip-divider"></div>
+        <div class="cp-uber-trip-stat">
+          <span class="cp-uber-trip-value">${duration > 0 ? duration : '—'}</span>
+          <span class="cp-uber-trip-label">min</span>
+        </div>
+        <div class="cp-uber-trip-divider"></div>
+        <div class="cp-uber-trip-stat">
+          <span class="cp-uber-trip-value cp-uber-price-range">${fmtPrice(priceLow)} – ${fmtPrice(priceHigh)}</span>
+          <span class="cp-uber-trip-label">stima</span>
+        </div>
+      </div>
+
+      <div class="cp-uber-footer">
+        <button class="cp-uber-confirm-btn" data-action="confirm">
+          <span>Conferma UberX</span>
+          <span class="cp-uber-confirm-price">${fmtPrice(priceLow)} – ${fmtPrice(priceHigh)}</span>
+        </button>
+        <div class="cp-uber-disclaimer">
+          <span class="cp-uber-ride-id">${rideId}</span>
+          <span>·</span>
+          <span>Simulazione – nessun addebito</span>
+        </div>
+      </div>
+
+      <div class="cp-uber-confirmed hidden">
+        <div class="cp-uber-confirmed-icon">✓</div>
+        <div class="cp-uber-confirmed-title">Corsa confermata!</div>
+        <div class="cp-uber-confirmed-sub">Il tuo autista sta arrivando</div>
+        <div class="cp-uber-driver">
+          <div class="cp-uber-driver-avatar">👤</div>
+          <div class="cp-uber-driver-info">
+            <div class="cp-uber-driver-name">Marco R.</div>
+            <div class="cp-uber-driver-rating">⭐ 4.92 · Toyota Prius · AB 123 CD</div>
+          </div>
+        </div>
+      </div>
     </div>
   `;
+};
+
+const initUberWidget = (widgetEl) => {
+  if (!widgetEl || widgetEl.dataset.initialized === 'true') return;
+  widgetEl.dataset.initialized = 'true';
+
+  const mapContainer = widgetEl.querySelector('.cp-uber-map');
+  if (!mapContainer || !window.L) return;
+
+  let pickupLat = parseFloat(widgetEl.dataset.pickupLat) || profileState.lat || 45.4642;
+  let pickupLng = parseFloat(widgetEl.dataset.pickupLng) || profileState.lng || 9.19;
+  let dropoffLat = parseFloat(widgetEl.dataset.dropoffLat) || null;
+  let dropoffLng = parseFloat(widgetEl.dataset.dropoffLng) || null;
+
+  const uberMap = L.map(mapContainer, { zoomControl: false, attributionControl: false })
+    .setView([pickupLat, pickupLng], 14);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19
+  }).addTo(uberMap);
+
+  const pickupIcon = L.divIcon({ className: 'cp-uber-marker pickup', html: '<div></div>', iconSize: [16, 16] });
+  const dropoffIcon = L.divIcon({ className: 'cp-uber-marker dropoff', html: '<div></div>', iconSize: [16, 16] });
+
+  let pickupMarker = L.marker([pickupLat, pickupLng], { icon: pickupIcon, draggable: true }).addTo(uberMap);
+  let dropoffMarker = null;
+  let routeLine = null;
+
+  if (dropoffLat && dropoffLng) {
+    dropoffMarker = L.marker([dropoffLat, dropoffLng], { icon: dropoffIcon, draggable: true }).addTo(uberMap);
+    drawRoute();
+  }
+
+  function drawRoute() {
+    if (routeLine) uberMap.removeLayer(routeLine);
+    if (!dropoffMarker) return;
+    const pll = pickupMarker.getLatLng();
+    const dll = dropoffMarker.getLatLng();
+    routeLine = L.polyline([[pll.lat, pll.lng], [dll.lat, dll.lng]], {
+      color: '#276EF1', weight: 4, opacity: 0.8, dashArray: '8, 12'
+    }).addTo(uberMap);
+    uberMap.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+  }
+
+  pickupMarker.on('dragend', async (e) => {
+    const ll = e.target.getLatLng();
+    widgetEl.dataset.pickupLat = ll.lat;
+    widgetEl.dataset.pickupLng = ll.lng;
+    const addr = await reverseGeocode(ll.lat, ll.lng);
+    if (addr) widgetEl.querySelector('[data-type="pickup"]').value = addr;
+    drawRoute();
+  });
+
+  const geoBtn = widgetEl.querySelector('[data-action="geolocate"]');
+  if (geoBtn) {
+    geoBtn.addEventListener('click', () => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        pickupMarker.setLatLng([latitude, longitude]);
+        uberMap.setView([latitude, longitude], 15);
+        widgetEl.dataset.pickupLat = latitude;
+        widgetEl.dataset.pickupLng = longitude;
+        const addr = await reverseGeocode(latitude, longitude);
+        if (addr) widgetEl.querySelector('[data-type="pickup"]').value = addr;
+        drawRoute();
+      });
+    });
+  }
+
+  widgetEl.querySelectorAll('.cp-uber-search-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const target = btn.dataset.target;
+      const input = widgetEl.querySelector(`[data-type="${target}"]`);
+      if (!input || !input.value.trim()) return;
+      btn.disabled = true;
+      const result = await geocodeAddress(input.value.trim());
+      btn.disabled = false;
+      if (!result) return;
+      const lat = parseFloat(result.lat);
+      const lng = parseFloat(result.lon);
+      input.value = result.display_name || input.value;
+      if (target === 'pickup') {
+        pickupMarker.setLatLng([lat, lng]);
+        widgetEl.dataset.pickupLat = lat;
+        widgetEl.dataset.pickupLng = lng;
+        uberMap.setView([lat, lng], 15);
+      } else {
+        if (!dropoffMarker) {
+          dropoffMarker = L.marker([lat, lng], { icon: dropoffIcon, draggable: true }).addTo(uberMap);
+          dropoffMarker.on('dragend', async (e) => {
+            const ll = e.target.getLatLng();
+            widgetEl.dataset.dropoffLat = ll.lat;
+            widgetEl.dataset.dropoffLng = ll.lng;
+            const addr = await reverseGeocode(ll.lat, ll.lng);
+            if (addr) widgetEl.querySelector('[data-type="dropoff"]').value = addr;
+            drawRoute();
+          });
+        } else {
+          dropoffMarker.setLatLng([lat, lng]);
+        }
+        widgetEl.dataset.dropoffLat = lat;
+        widgetEl.dataset.dropoffLng = lng;
+      }
+      drawRoute();
+    });
+  });
+
+  widgetEl.querySelectorAll('.cp-uber-vehicle').forEach((vBtn) => {
+    vBtn.addEventListener('click', () => {
+      widgetEl.querySelectorAll('.cp-uber-vehicle').forEach((b) => b.classList.remove('active'));
+      vBtn.classList.add('active');
+      const name = vBtn.querySelector('.cp-uber-vehicle-name').textContent;
+      const price = vBtn.querySelector('.cp-uber-vehicle-price').textContent;
+      widgetEl.querySelector('.cp-uber-confirm-btn span:first-child').textContent = `Conferma ${name}`;
+      widgetEl.querySelector('.cp-uber-confirm-price').textContent = price;
+    });
+  });
+
+  const confirmBtn = widgetEl.querySelector('[data-action="confirm"]');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', () => {
+      confirmBtn.disabled = true;
+      confirmBtn.innerHTML = '<span class="cp-uber-spinner"></span> Prenotazione in corso...';
+      setTimeout(() => {
+        widgetEl.querySelector('.cp-uber-footer').classList.add('hidden');
+        widgetEl.querySelector('.cp-uber-vehicles').classList.add('hidden');
+        widgetEl.querySelector('.cp-uber-trip-info').classList.add('hidden');
+        widgetEl.querySelector('.cp-uber-confirmed').classList.remove('hidden');
+      }, 1500);
+    });
+  }
+
+  setTimeout(() => uberMap.invalidateSize(), 100);
 };
 
 const renderWidget = (payload) => {
