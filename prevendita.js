@@ -40,72 +40,43 @@ const formatDate = (value) => {
   }
 };
 
-const buildGradientQr = (element, text, size = 180) => {
-  return new Promise((resolve) => {
-    // Check if library is loaded, otherwise wait
-    const checkLibrary = () => {
-      if (!window.QRCodeStyling) {
-        setTimeout(checkLibrary, 50);
-        return;
-      }
-
-      if (!element || !text) {
-        resolve(false);
-        return;
-      }
-
-      element.innerHTML = '';
-
-      // Ensure element has proper sizing - set directly on element
-      element.style.width = `${size}px`;
-      element.style.height = `${size}px`;
-      element.style.display = 'flex';
-      element.style.alignItems = 'center';
-      element.style.justifyContent = 'center';
-
-      const qr = new QRCodeStyling({
-        width: size,
-        height: size,
-        type: 'svg',
-        data: text,
-        margin: 0,
-        qrOptions: {
-          errorCorrectionLevel: 'L',
-          margin: 0
-        },
-        dotsOptions: {
-          type: 'dots',
-          gradient: {
-            type: 'linear',
-            rotation: 2.2,
-            colorStops: [
-              { offset: 0, color: '#ec4899' },
-              { offset: 0.6, color: '#db2777' },
-              { offset: 1, color: '#be185d' }
-            ]
-          }
-        },
-        cornersSquareOptions: {
-          type: 'extra-rounded',
-          color: '#ec4899'
-        },
-        cornersDotOptions: {
-          type: 'dot',
-          color: '#db2777'
-        },
-        backgroundOptions: {
-          color: 'transparent'
-        }
-      });
-
-      // Use append with callback for better reliability
-      qr.append(element, () => {
-        resolve(true);
-      });
-    };
-
-    checkLibrary();
+// Build QR image URL using QuickChart with pink gradient
+const buildQrUrl = (text, size = 180) => {
+  if (!text) return '';
+  // Using QuickChart with pink gradient colors matching the widget theme
+  const base = 'https://quickchart.io/qr';
+  const params = new URLSearchParams({
+    text: text,
+    size: size.toString(),
+    margin: '2',
+    color: 'ec4899',
+    bgcolor: '0b0b10',
+    dot: 'gradient',
+    dotGradient: 'linear',
+    dotGradientRotation: '2.2',
+    dotGradientColors: 'ec4899,db2777,be185d'
   });
+  return `${base}?${params.toString()}`;
+};
+
+// Render QR code using img tag with QuickChart
+const renderQrCode = (element, text, size = 180) => {
+  if (!element || !text) return false;
+
+  element.innerHTML = '';
+  element.style.width = `${size}px`;
+  element.style.height = `${size}px`;
+
+  const img = document.createElement('img');
+  img.src = buildQrUrl(text, size);
+  img.style.width = '100%';
+  img.style.height = '100%';
+  img.style.objectFit = 'contain';
+  img.style.borderRadius = '8px';
+  img.alt = 'QR Code';
+
+  element.appendChild(img);
+  return true;
 };
 
 const renderInfoGrid = (container, prevendita) => {
@@ -157,6 +128,11 @@ const renderHostView = (data) => {
   // Info grid
   renderInfoGrid(infoGrid, prevendita);
 
+  // QR Code
+  if (data.guest_url) {
+    renderQrCode(qrWrapper, data.guest_url, 180);
+  }
+
   clearIntervals();
 
   // Show host view
@@ -164,7 +140,7 @@ const renderHostView = (data) => {
   guestView.hidden = true;
 };
 
-const renderGuestView = async (data) => {
+const renderGuestView = (data) => {
   const prevendita = data.prevendita || {};
 
   // Hero - Guest sees their ticket directly (no pending status)
@@ -184,7 +160,7 @@ const renderGuestView = async (data) => {
 
   // QR Code for guest
   if (data.guest_url) {
-    await buildGradientQr(qrWrapper, data.guest_url, 180);
+    renderQrCode(qrWrapper, data.guest_url, 180);
   }
 
   clearIntervals();
@@ -194,14 +170,14 @@ const renderGuestView = async (data) => {
   guestView.hidden = false;
 };
 
-const renderPrevendita = async (data) => {
+const renderPrevendita = (data) => {
   currentData = data;
   const role = data.role;
 
   if (role === 'host') {
     renderHostView(data);
   } else {
-    await renderGuestView(data);
+    renderGuestView(data);
   }
 };
 
@@ -221,7 +197,7 @@ const fetchPrevendita = async () => {
 
     const data = await resp.json();
 
-    await renderPrevendita(data);
+    renderPrevendita(data);
   } catch (err) {
     heroSub.textContent = 'Errore nel caricamento della prevendita.';
     console.error(err);
@@ -307,14 +283,13 @@ const downloadTicketPDF = async () => {
     doc.text(`ID: #${prevendita.id}`, 4, yPos);
 
     // Generate QR code with pink gradient using QuickChart
-    // Using the same colors as the widget: #ec4899, #db2777, #be185d
     const qrY = yPos + 8;
     const qrWidth = 30;
     const qrHeight = 30;
 
     // Build QR URL with pink gradient colors
     const qrText = guestUrl || (prevendita.guest_token ? `${window.location.origin}/prevendita.html?token=${prevendita.guest_token}` : '');
-    const qrImgUrl = `https://quickchart.io/qr?text=${encodeURIComponent(qrText)}&size=120&margin=2&color=ec4899&bgcolor=0b0b10&dot=gradient&dotGradient=linear&dotGradientRotation=2.2&dotGradientColors=ec4899%2Cdb2777%2Cbe185d`;
+    const qrImgUrl = buildQrUrl(qrText, 120);
 
     // Add QR image to PDF
     doc.addImage(qrImgUrl, 'PNG', 12, qrY, qrWidth, qrHeight);
