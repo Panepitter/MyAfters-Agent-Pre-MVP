@@ -40,26 +40,38 @@ const formatDate = (value) => {
   }
 };
 
-// Build QR image URL using QuickChart with pink gradient
+// Build QR image URL using Google Charts API (more compatible with ITP)
+// Fallback to QuickChart if needed
 const buildQrUrl = (text, size = 180) => {
   if (!text) return '';
-  // Using QuickChart with pink gradient colors matching the widget theme
-  const base = 'https://quickchart.io/qr';
+
+  // Try Google Charts API first (more reliable with ITP)
+  const base = 'https://chart.googleapis.com/chart';
   const params = new URLSearchParams({
-    text: text,
-    size: size.toString(),
-    margin: '2',
-    color: 'ec4899',
-    bgcolor: '0b0b10',
-    dot: 'gradient',
-    dotGradient: 'linear',
-    dotGradientRotation: '2.2',
-    dotGradientColors: 'ec4899,db2777,be185d'
+    chs: `${size}x${size}`,
+    cht: 'qr',
+    chl: text,
+    choe: 'UTF-8',
+    chf: 'bg,s,00000000' // transparent background
   });
   return `${base}?${params.toString()}`;
 };
 
-// Render QR code using img tag with QuickChart
+// Fallback function to build QR with QuickChart (pink gradient)
+const buildQrUrlPink = (text, size = 180) => {
+  if (!text) return '';
+  const base = 'https://api.qrserver.com/v1/create-qr-code/';
+  const params = new URLSearchParams({
+    size: `${size}x${size}`,
+    data: text,
+    color: 'EC4899',
+    bgcolor: '0B0B10',
+    margin: '2'
+  });
+  return `${base}?${params.toString()}`;
+};
+
+// Render QR code using img tag with Google Charts API
 const renderQrCode = (element, text, size = 180) => {
   if (!element || !text) return false;
 
@@ -74,6 +86,10 @@ const renderQrCode = (element, text, size = 180) => {
   img.style.objectFit = 'contain';
   img.style.borderRadius = '8px';
   img.alt = 'QR Code';
+  img.onerror = () => {
+    // Fallback to QR Server if Google Charts fails
+    img.src = buildQrUrlPink(text, size);
+  };
 
   element.appendChild(img);
   return true;
@@ -282,14 +298,14 @@ const downloadTicketPDF = async () => {
     yPos += 5;
     doc.text(`ID: #${prevendita.id}`, 4, yPos);
 
-    // Generate QR code with pink gradient using QuickChart
+    // Generate QR code with pink gradient
     const qrY = yPos + 8;
     const qrWidth = 30;
     const qrHeight = 30;
 
-    // Build QR URL with pink gradient colors
+    // Build QR URL - use QR Server for better compatibility
     const qrText = guestUrl || (prevendita.guest_token ? `${window.location.origin}/prevendita.html?token=${prevendita.guest_token}` : '');
-    const qrImgUrl = buildQrUrl(qrText, 120);
+    const qrImgUrl = buildQrUrlPink(qrText, 120);
 
     // Add QR image to PDF
     doc.addImage(qrImgUrl, 'PNG', 12, qrY, qrWidth, qrHeight);
