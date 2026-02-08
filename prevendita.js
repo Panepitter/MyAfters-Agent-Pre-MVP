@@ -11,7 +11,7 @@ const guestView = document.getElementById('guestView');
 const infoGrid = document.getElementById('infoGrid');
 const guestInfoGrid = document.getElementById('guestInfoGrid');
 const qrWrapper = document.getElementById('qrWrapper');
-const guestLinkBox = document.getElementById('guestLinkBox');
+const downloadBtn = document.getElementById('downloadBtn');
 
 // URL params
 const params = new URLSearchParams(window.location.search);
@@ -20,29 +20,6 @@ const roleParam = params.get('role');
 
 // State
 let currentData = null;
-let guestRequestState = null;
-
-const guestRequestStorageKey = token ? `myafters_prevendita_guest_${token}` : 'myafters_prevendita_guest';
-
-const loadGuestRequestState = () => {
-  if (!token) return null;
-  try {
-    const raw = localStorage.getItem(guestRequestStorageKey);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch (err) {
-    return null;
-  }
-};
-
-const saveGuestRequestState = (payload) => {
-  if (!token) return;
-  if (!payload) {
-    localStorage.removeItem(guestRequestStorageKey);
-    return;
-  }
-  localStorage.setItem(guestRequestStorageKey, JSON.stringify(payload));
-};
 
 const clearIntervals = () => {
   // Placeholder for future polling
@@ -125,9 +102,9 @@ const renderInfoGrid = (container, prevendita) => {
 
 const updateStatusDisplay = (status) => {
   const statusConfig = {
-    pending: { label: 'In attesa', class: 'pending', icon: '⏳' },
-    accepted: { label: 'Confermata', class: 'accepted', icon: '✓' },
-    rejected: { label: 'Rifiutata', class: 'rejected', icon: '✕' }
+    pending: { label: 'In attesa', class: 'pending' },
+    accepted: { label: 'Confermata', class: 'accepted' },
+    rejected: { label: 'Rifiutata', class: 'rejected' }
   };
 
   const config = statusConfig[status] || statusConfig.pending;
@@ -156,7 +133,6 @@ const renderHostView = (data) => {
   // QR Code
   if (data.guest_url) {
     buildGradientQr(qrWrapper, data.guest_url, 160);
-    guestLinkBox.innerHTML = `<a href="${data.guest_url}" target="_blank">${data.guest_url}</a>`;
   }
 
   clearIntervals();
@@ -168,63 +144,26 @@ const renderHostView = (data) => {
 
 const renderGuestView = (data) => {
   const prevendita = data.prevendita || {};
-  const status = data.status || 'pending';
 
-  // Hero
-  heroIcon.textContent = status === 'accepted' ? '🎊' : status === 'rejected' ? '😔' : '🎟️';
-  heroTitle.textContent = `Prevendita ${prevendita.ticket_type ? prevendita.ticket_type.charAt(0).toUpperCase() + prevendita.ticket_type.slice(1) : 'Standard'}`;
+  // Hero - Guest sees their ticket directly (no pending status)
+  heroIcon.textContent = '🎟️';
+  heroTitle.textContent = `Il tuo biglietto - ${prevendita.ticket_type ? prevendita.ticket_type.charAt(0).toUpperCase() + prevendita.ticket_type.slice(1) : 'Standard'}`;
   heroSub.textContent = `Locale #${prevendita.venue_id || '—'} · ${formatDate(prevendita.event_datetime)}`;
-  updateStatusDisplay(status);
 
-  // Role badge
+  // Status pill shows active ticket
+  statusPill.textContent = '🎫 Biglietto attivo';
+  statusPill.className = 'cp-status-pill accepted';
   roleBadge.textContent = '🎫 Ospite';
   roleBadge.className = 'cp-prev-role-badge guest';
   roleBadge.hidden = false;
 
-  // Info grid (limited info for guests)
-  const guestItems = [
-    { label: 'Tipo', value: prevendita.ticket_type ? prevendita.ticket_type.charAt(0).toUpperCase() + prevendita.ticket_type.slice(1) : 'Standard' },
-    { label: 'Persone', value: prevendita.party_size || '—' },
-    { label: 'Data/Ora', value: formatDate(prevendita.event_datetime) },
-    { label: 'Locale', value: `#${prevendita.venue_id || '—'}` }
-  ];
+  // Info grid (guest sees full info)
+  renderInfoGrid(guestInfoGrid, prevendita);
 
-  guestInfoGrid.innerHTML = guestItems.map(item => `
-    <div class="cp-prev-info-item">
-      <div class="cp-prev-info-label">${item.label}</div>
-      <div class="cp-prev-info-value">${item.value}</div>
-    </div>
-  `).join('');
-
-  // Guest notice based on status
-  const noticeConfig = {
-    pending: {
-      icon: '⏳',
-      text: 'Prevendita in attesa di conferma',
-      sub: 'Il creatore della prevendita deve confermare il tuo biglietto',
-      class: 'cp-prev-status-pending'
-    },
-    accepted: {
-      icon: '🎉',
-      text: 'La tua prevendita è confermata!',
-      sub: 'Presentati al locale con questo QR code',
-      class: 'cp-prev-status-accepted'
-    },
-    rejected: {
-      icon: '😔',
-      text: 'Prevendita non confermata',
-      sub: 'Il creatore della prevendita ha rifiutato il biglietto',
-      class: 'cp-prev-status-rejected'
-    }
-  };
-
-  const notice = noticeConfig[status] || noticeConfig.pending;
-  guestNoticeSection.className = `cp-prev-section ${notice.class}`;
-  guestNotice.innerHTML = `
-    <div class="cp-prev-guest-notice-icon">${notice.icon}</div>
-    <div class="cp-prev-guest-notice-text">${notice.text}</div>
-    <div class="cp-prev-guest-notice-sub">${notice.sub}</div>
-  `;
+  // QR Code for guest
+  if (data.guest_url) {
+    buildGradientQr(qrWrapper, data.guest_url, 180);
+  }
 
   clearIntervals();
 
@@ -267,8 +206,115 @@ const fetchPrevendita = async () => {
   }
 };
 
-// Event listeners for host view
-// (Placeholder for future functionality like guest requests)
+// PDF Download functionality
+const downloadTicketPDF = () => {
+  if (!currentData || !currentData.prevendita) {
+    alert('Impossibile scaricare il biglietto. Riprova.');
+    return;
+  }
+
+  const prevendita = currentData.prevendita;
+
+  // Create PDF content using jsPDF
+  const loadScript = (src) => new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+
+  loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+    .then(() => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [54, 95] // Small ticket size
+      });
+
+      // Colors
+      const primary = { r: 236, g: 72, b: 153 }; // pink-500
+      const secondary = { r: 219, g: 39, b: 119 }; // pink-600
+      const dark = { r: 15, g: 23, b: 42 }; // dark bg
+
+      // Header
+      doc.setFillColor(dark.r, dark.g, dark.b);
+      doc.rect(0, 0, 54, 25, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('MyAfters', 27, 8, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('Prevendita Biglietto', 27, 12, { align: 'center' });
+
+      // Decorative line
+      doc.setDrawColor(primary.r, primary.g, primary.b);
+      doc.setLineWidth(0.5);
+      doc.line(4, 18, 50, 18);
+
+      // Ticket Icon
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(20);
+      doc.setTextColor(primary.r, primary.g, primary.b);
+      doc.text('🎟️', 27, 22, { align: 'center' });
+
+      // Info Section
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+
+      let yPos = 32;
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Tipo: ${prevendita.ticket_type ? prevendita.ticket_type.charAt(0).toUpperCase() + prevendita.ticket_type.slice(1) : 'Standard'}`, 4, yPos);
+      yPos += 6;
+
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Intestatario: ${prevendita.user_name || 'Ospite'}`, 4, yPos);
+      yPos += 5;
+      doc.text(`Persone: ${prevendita.party_size || 1}`, 4, yPos);
+      yPos += 5;
+
+      const dateStr = formatDate(prevendita.event_datetime);
+      doc.text(`Data: ${dateStr}`, 4, yPos);
+      yPos += 5;
+      doc.text(`Locale: #${prevendita.venue_id || '—'}`, 4, yPos);
+      yPos += 5;
+      doc.text(`ID: #${prevendita.id}`, 4, yPos);
+
+      // QR Code placeholder
+      const qrY = yPos + 8;
+      doc.setDrawColor(secondary.r, secondary.g, secondary.b);
+      doc.setLineWidth(0.3);
+      doc.rect(12, qrY, 30, 30);
+
+      // QR text
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7);
+      doc.setTextColor(200, 200, 200);
+      doc.text('Scansiona QR', 27, qrY + 32, { align: 'center' });
+
+      // Footer
+      doc.setFillColor(primary.r, primary.g, primary.b);
+      doc.rect(0, qrY + 38, 54, 8, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.text('Scansiona per ingresso', 27, qrY + 43, { align: 'center' });
+
+      // Download
+      doc.save(`myafters_prevendita_${prevendita.id}.pdf`);
+    })
+    .catch((err) => {
+      console.error('Error loading jsPDF:', err);
+      alert('Errore nel caricamento della libreria PDF. Riprova.');
+    });
+};
+
+// Event listeners
+if (downloadBtn) {
+  downloadBtn.addEventListener('click', downloadTicketPDF);
+}
 
 // Init
 fetchPrevendita();

@@ -220,44 +220,6 @@
       opacity: 0.5;
       cursor: not-allowed;
     }
-    .cp-prev-status-pending {
-      background: rgba(236, 72, 153, 0.1);
-      border: 1px solid rgba(236, 72, 153, 0.3);
-    }
-    .cp-prev-status-pending .cp-prev-guest-notice-text {
-      color: #f9a8d4;
-    }
-    .cp-prev-status-accepted {
-      background: rgba(34, 197, 94, 0.1);
-      border: 1px solid rgba(34, 197, 94, 0.3);
-    }
-    .cp-prev-status-accepted .cp-prev-guest-notice-text {
-      color: #bbf7d0;
-    }
-    .cp-prev-status-rejected {
-      background: rgba(248, 113, 113, 0.1);
-      border: 1px solid rgba(248, 113, 113, 0.3);
-    }
-    .cp-prev-status-rejected .cp-prev-guest-notice-text {
-      color: #fecaca;
-    }
-    .cp-prev-guest-notice {
-      text-align: center;
-      padding: 1rem;
-      border-radius: 12px;
-    }
-    .cp-prev-guest-notice-icon {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-    .cp-prev-guest-notice-text {
-      font-size: 0.85rem;
-    }
-    .cp-prev-guest-notice-sub {
-      font-size: 0.75rem;
-      color: var(--cp-text-muted);
-      margin-top: 0.35rem;
-    }
     @media (max-width: 500px) {
       .cp-prev-content {
         padding: 1rem;
@@ -329,8 +291,7 @@
               <div class="cp-prev-section-title">🎟️ QR Code per accesso</div>
               <div class="cp-prev-qr-wrapper">
                 <div class="cp-prev-qr" id="qrWrapper"></div>
-                <div class="cp-prev-qr-hint">Mostra questo QR per l'ingresso con prevendita</div>
-                <div class="cp-prev-link" id="guestLinkBox"></div>
+                <div class="cp-prev-qr-hint">Mostra questo QR per l'ingresso</div>
               </div>
             </div>
           </div>
@@ -338,16 +299,22 @@
           <!-- Guest View -->
           <div id="guestView" hidden>
             <div class="cp-prev-section">
-              <div class="cp-prev-section-title">📋 Dettagli prevendita</div>
+              <div class="cp-prev-section-title">🎟️ Il tuo biglietto</div>
               <div class="cp-prev-info-grid" id="guestInfoGrid"></div>
             </div>
 
-            <div class="cp-prev-section cp-prev-status-pending" id="guestNoticeSection">
-              <div class="cp-prev-guest-notice" id="guestNotice">
-                <div class="cp-prev-guest-notice-icon">⏳</div>
-                <div class="cp-prev-guest-notice-text">Prevendita in attesa di conferma</div>
-                <div class="cp-prev-guest-notice-sub">Il creatore della prevendita deve confermare il tuo biglietto</div>
+            <div class="cp-prev-section">
+              <div class="cp-prev-section-title">📱 QR Code per l'ingresso</div>
+              <div class="cp-prev-qr-wrapper">
+                <div class="cp-prev-qr" id="qrWrapper"></div>
+                <div class="cp-prev-qr-hint">Mostra questo QR al personale all'ingresso</div>
               </div>
+            </div>
+
+            <div class="cp-prev-actions">
+              <button class="cp-prev-btn cp-prev-btn-primary" id="downloadBtn">
+                📥 Scarica biglietto PDF
+              </button>
             </div>
           </div>
         </div>

@@ -49,7 +49,7 @@ def _ensure_columns(cur):
             event_datetime TIMESTAMP NOT NULL,
             ticket_type TEXT DEFAULT 'standard',
             notes TEXT,
-            status TEXT DEFAULT 'pending',
+            status TEXT DEFAULT 'active',
             qr_code_payload TEXT,
             host_token TEXT,
             guest_token TEXT,
@@ -505,7 +505,7 @@ def get_prevendita(token):
     return jsonify(
         {
             "prevendita": _serialize_prevendita(row),
-            "status": row.get("status") or "pending",
+            "status": row.get("status") or "active",
             "role": role,
             "prevendita_url": host_url,
             "guest_url": guest_url,

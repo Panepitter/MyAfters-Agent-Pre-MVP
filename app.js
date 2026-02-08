@@ -600,14 +600,14 @@ const buildReservationOverlayHtml = (payload) => {
 
 const buildPrevenditaHtml = (payload) => {
   const prevendita = payload.prevendita || {};
-  const status = payload.status || prevendita.status || 'pending';
+  const status = payload.status || prevendita.status || 'active';
   const date = prevendita.event_datetime ? new Date(prevendita.event_datetime).toLocaleString('it-IT') : '—';
   const venueInfo = prevendita.venue_id ? `Locale #${prevendita.venue_id}` : 'Locale selezionato';
   const guestUrl = payload.guest_url || '';
   const ticketType = prevendita.ticket_type || 'standard';
 
   const statusLabel = {
-    pending: 'In attesa',
+    active: 'Biglietto attivo',
     accepted: 'Confermata',
     rejected: 'Rifiutata'
   }[status] || status;
@@ -650,7 +650,7 @@ const buildPrevenditaHtml = (payload) => {
 
           <div class="cp-bubble-footer">
             <a class="cp-bubble-manage-btn" href="${guestUrl}" target="_blank" rel="noopener">
-              Gestisci →
+              Apri biglietto →
             </a>
           </div>
         </div>
