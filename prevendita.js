@@ -40,45 +40,72 @@ const formatDate = (value) => {
   }
 };
 
-const buildGradientQr = (element, text, size = 170) => {
-  if (!window.QRCodeStyling || !element || !text) return false;
-  element.innerHTML = '';
-  const qr = new QRCodeStyling({
-    width: size,
-    height: size,
-    type: 'svg',
-    data: text,
-    margin: 0,
-    qrOptions: {
-      errorCorrectionLevel: 'L',
-      margin: 0
-    },
-    dotsOptions: {
-      type: 'dots',
-      gradient: {
-        type: 'linear',
-        rotation: 2.2,
-        colorStops: [
-          { offset: 0, color: '#ec4899' },
-          { offset: 0.6, color: '#db2777' },
-          { offset: 1, color: '#be185d' }
-        ]
+const buildGradientQr = (element, text, size = 180) => {
+  return new Promise((resolve) => {
+    // Check if library is loaded, otherwise wait
+    const checkLibrary = () => {
+      if (!window.QRCodeStyling) {
+        setTimeout(checkLibrary, 50);
+        return;
       }
-    },
-    cornersSquareOptions: {
-      type: 'extra-rounded',
-      color: '#ec4899'
-    },
-    cornersDotOptions: {
-      type: 'dot',
-      color: '#db2777'
-    },
-    backgroundOptions: {
-      color: 'transparent'
-    }
+
+      if (!element || !text) {
+        resolve(false);
+        return;
+      }
+
+      element.innerHTML = '';
+
+      // Ensure element has proper sizing - set directly on element
+      element.style.width = `${size}px`;
+      element.style.height = `${size}px`;
+      element.style.display = 'flex';
+      element.style.alignItems = 'center';
+      element.style.justifyContent = 'center';
+
+      const qr = new QRCodeStyling({
+        width: size,
+        height: size,
+        type: 'svg',
+        data: text,
+        margin: 0,
+        qrOptions: {
+          errorCorrectionLevel: 'L',
+          margin: 0
+        },
+        dotsOptions: {
+          type: 'dots',
+          gradient: {
+            type: 'linear',
+            rotation: 2.2,
+            colorStops: [
+              { offset: 0, color: '#ec4899' },
+              { offset: 0.6, color: '#db2777' },
+              { offset: 1, color: '#be185d' }
+            ]
+          }
+        },
+        cornersSquareOptions: {
+          type: 'extra-rounded',
+          color: '#ec4899'
+        },
+        cornersDotOptions: {
+          type: 'dot',
+          color: '#db2777'
+        },
+        backgroundOptions: {
+          color: 'transparent'
+        }
+      });
+
+      // Use append with callback for better reliability
+      qr.append(element, () => {
+        resolve(true);
+      });
+    };
+
+    checkLibrary();
   });
-  qr.append(element);
-  return true;
 };
 
 const renderInfoGrid = (container, prevendita) => {
@@ -130,11 +157,6 @@ const renderHostView = (data) => {
   // Info grid
   renderInfoGrid(infoGrid, prevendita);
 
-  // QR Code
-  if (data.guest_url) {
-    buildGradientQr(qrWrapper, data.guest_url, 160);
-  }
-
   clearIntervals();
 
   // Show host view
@@ -142,7 +164,7 @@ const renderHostView = (data) => {
   guestView.hidden = true;
 };
 
-const renderGuestView = (data) => {
+const renderGuestView = async (data) => {
   const prevendita = data.prevendita || {};
 
   // Hero - Guest sees their ticket directly (no pending status)
@@ -162,7 +184,7 @@ const renderGuestView = (data) => {
 
   // QR Code for guest
   if (data.guest_url) {
-    buildGradientQr(qrWrapper, data.guest_url, 180);
+    await buildGradientQr(qrWrapper, data.guest_url, 180);
   }
 
   clearIntervals();
@@ -172,14 +194,14 @@ const renderGuestView = (data) => {
   guestView.hidden = false;
 };
 
-const renderPrevendita = (data) => {
+const renderPrevendita = async (data) => {
   currentData = data;
   const role = data.role;
 
   if (role === 'host') {
     renderHostView(data);
   } else {
-    renderGuestView(data);
+    await renderGuestView(data);
   }
 };
 
@@ -199,7 +221,7 @@ const fetchPrevendita = async () => {
 
     const data = await resp.json();
 
-    renderPrevendita(data);
+    await renderPrevendita(data);
   } catch (err) {
     heroSub.textContent = 'Errore nel caricamento della prevendita.';
     console.error(err);
@@ -207,15 +229,16 @@ const fetchPrevendita = async () => {
 };
 
 // PDF Download functionality
-const downloadTicketPDF = () => {
+const downloadTicketPDF = async () => {
   if (!currentData || !currentData.prevendita) {
     alert('Impossibile scaricare il biglietto. Riprova.');
     return;
   }
 
   const prevendita = currentData.prevendita;
+  const guestUrl = currentData.guest_url;
 
-  // Create PDF content using jsPDF
+  // Load jsPDF
   const loadScript = (src) => new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = src;
@@ -224,96 +247,99 @@ const downloadTicketPDF = () => {
     document.head.appendChild(script);
   });
 
-  loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
-    .then(() => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [54, 95] // Small ticket size
-      });
+  try {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
 
-      // Colors
-      const primary = { r: 236, g: 72, b: 153 }; // pink-500
-      const secondary = { r: 219, g: 39, b: 119 }; // pink-600
-      const dark = { r: 15, g: 23, b: 42 }; // dark bg
-
-      // Header
-      doc.setFillColor(dark.r, dark.g, dark.b);
-      doc.rect(0, 0, 54, 25, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text('MyAfters', 27, 8, { align: 'center' });
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text('Prevendita Biglietto', 27, 12, { align: 'center' });
-
-      // Decorative line
-      doc.setDrawColor(primary.r, primary.g, primary.b);
-      doc.setLineWidth(0.5);
-      doc.line(4, 18, 50, 18);
-
-      // Ticket Icon
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(20);
-      doc.setTextColor(primary.r, primary.g, primary.b);
-      doc.text('🎟️', 27, 22, { align: 'center' });
-
-      // Info Section
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(8);
-
-      let yPos = 32;
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Tipo: ${prevendita.ticket_type ? prevendita.ticket_type.charAt(0).toUpperCase() + prevendita.ticket_type.slice(1) : 'Standard'}`, 4, yPos);
-      yPos += 6;
-
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Intestatario: ${prevendita.user_name || 'Ospite'}`, 4, yPos);
-      yPos += 5;
-      doc.text(`Persone: ${prevendita.party_size || 1}`, 4, yPos);
-      yPos += 5;
-
-      const dateStr = formatDate(prevendita.event_datetime);
-      doc.text(`Data: ${dateStr}`, 4, yPos);
-      yPos += 5;
-      doc.text(`Locale: #${prevendita.venue_id || '—'}`, 4, yPos);
-      yPos += 5;
-      doc.text(`ID: #${prevendita.id}`, 4, yPos);
-
-      // QR Code placeholder
-      const qrY = yPos + 8;
-      doc.setDrawColor(secondary.r, secondary.g, secondary.b);
-      doc.setLineWidth(0.3);
-      doc.rect(12, qrY, 30, 30);
-
-      // QR text
-      doc.setFont('helvetica', 'italic');
-      doc.setFontSize(7);
-      doc.setTextColor(200, 200, 200);
-      doc.text('Scansiona QR', 27, qrY + 32, { align: 'center' });
-
-      // Footer
-      doc.setFillColor(primary.r, primary.g, primary.b);
-      doc.rect(0, qrY + 38, 54, 8, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.text('Scansiona per ingresso', 27, qrY + 43, { align: 'center' });
-
-      // Download
-      doc.save(`myafters_prevendita_${prevendita.id}.pdf`);
-    })
-    .catch((err) => {
-      console.error('Error loading jsPDF:', err);
-      alert('Errore nel caricamento della libreria PDF. Riprova.');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [54, 95] // Small ticket size
     });
+
+    // Colors - Pink gradient theme matching the widget
+    const primary = { r: 236, g: 72, b: 153 }; // pink-500
+    const secondary = { r: 219, g: 39, b: 119 }; // pink-600
+    const dark = { r: 15, g: 23, b: 42 }; // dark bg
+
+    // Header
+    doc.setFillColor(dark.r, dark.g, dark.b);
+    doc.rect(0, 0, 54, 25, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('MyAfters', 27, 8, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('Prevendita Biglietto', 27, 12, { align: 'center' });
+
+    // Decorative line
+    doc.setDrawColor(primary.r, primary.g, primary.b);
+    doc.setLineWidth(0.5);
+    doc.line(4, 18, 50, 18);
+
+    // Ticket Icon
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(20);
+    doc.setTextColor(primary.r, primary.g, primary.b);
+    doc.text('🎟️', 27, 22, { align: 'center' });
+
+    // Info Section
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+
+    let yPos = 32;
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Tipo: ${prevendita.ticket_type ? prevendita.ticket_type.charAt(0).toUpperCase() + prevendita.ticket_type.slice(1) : 'Standard'}`, 4, yPos);
+    yPos += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Intestatario: ${prevendita.user_name || 'Ospite'}`, 4, yPos);
+    yPos += 5;
+    doc.text(`Persone: ${prevendita.party_size || 1}`, 4, yPos);
+    yPos += 5;
+
+    const dateStr = formatDate(prevendita.event_datetime);
+    doc.text(`Data: ${dateStr}`, 4, yPos);
+    yPos += 5;
+    doc.text(`Locale: #${prevendita.venue_id || '—'}`, 4, yPos);
+    yPos += 5;
+    doc.text(`ID: #${prevendita.id}`, 4, yPos);
+
+    // Generate QR code with pink gradient using QuickChart
+    // Using the same colors as the widget: #ec4899, #db2777, #be185d
+    const qrY = yPos + 8;
+    const qrWidth = 30;
+    const qrHeight = 30;
+
+    // Build QR URL with pink gradient colors
+    const qrText = guestUrl || (prevendita.guest_token ? `${window.location.origin}/prevendita.html?token=${prevendita.guest_token}` : '');
+    const qrImgUrl = `https://quickchart.io/qr?text=${encodeURIComponent(qrText)}&size=120&margin=2&color=ec4899&bgcolor=0b0b10&dot=gradient&dotGradient=linear&dotGradientRotation=2.2&dotGradientColors=ec4899%2Cdb2777%2Cbe185d`;
+
+    // Add QR image to PDF
+    doc.addImage(qrImgUrl, 'PNG', 12, qrY, qrWidth, qrHeight);
+
+    // Footer
+    doc.setFillColor(primary.r, primary.g, primary.b);
+    doc.rect(0, qrY + 38, 54, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('Scansiona per ingresso', 27, qrY + 43, { align: 'center' });
+
+    // Download
+    doc.save(`myafters_prevendita_${prevendita.id}.pdf`);
+  } catch (err) {
+    console.error('Error generating PDF:', err);
+    alert('Errore nel caricamento della libreria PDF. Riprova.');
+  }
 };
 
 // Event listeners
 if (downloadBtn) {
-  downloadBtn.addEventListener('click', downloadTicketPDF);
+  downloadBtn.addEventListener('click', async () => {
+    await downloadTicketPDF();
+  });
 }
 
 // Init
