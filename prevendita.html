@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyAfters · Prevendita Biglietto</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    .cp-prev-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .cp-prev-content {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+    .cp-prev-card {
+      max-width: 440px;
+      margin: 0 auto;
+      background: rgba(10, 12, 20, 0.88);
+      border: 1px solid rgba(236, 72, 153, 0.35);
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow:
+        0 30px 70px rgba(5, 8, 18, 0.6),
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 1px 0 rgba(255, 255, 255, 0.05) inset;
+      backdrop-filter: blur(22px) saturate(180%);
+      -webkit-backdrop-filter: blur(22px) saturate(180%);
+    }
+    .cp-prev-hero {
+      background: rgba(12, 14, 25, 0.8);
+      padding: 1.6rem 1.5rem;
+      text-align: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .cp-prev-hero-icon {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 0.75rem;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(232, 121, 249, 0.15));
+      border: 1px solid rgba(236, 72, 153, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.55rem;
+    }
+    .cp-prev-hero-title {
+      font-size: 1.55rem;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 0.25rem;
+    }
+    .cp-prev-hero-sub {
+      font-size: 0.85rem;
+      color: rgba(148, 163, 184, 0.8);
+    }
+    .cp-prev-role-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.75rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .cp-prev-role-badge.host {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.2));
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      color: #bbf7d0;
+    }
+    .cp-prev-role-badge.guest {
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(232, 121, 249, 0.2));
+      border: 1px solid rgba(236, 72, 153, 0.4);
+      color: #f9a8d4;
+    }
+    .cp-prev-body {
+      padding: 1.25rem;
+    }
+    .cp-prev-section {
+      margin-bottom: 1.25rem;
+    }
+    .cp-prev-section:last-child {
+      margin-bottom: 0;
+    }
+    .cp-prev-section-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cp-text-muted);
+      margin-bottom: 0.65rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .cp-prev-info-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .cp-prev-info-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(236, 72, 153, 0.18);
+      border-radius: 12px;
+      padding: 0.6rem 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .cp-prev-info-label {
+      font-size: 0.62rem;
+      color: rgba(148, 163, 184, 0.7);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .cp-prev-info-value {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #e2e8f0;
+      text-align: right;
+    }
+    .cp-prev-qr-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 1.25rem;
+      background: rgba(8, 12, 22, 0.7);
+      border: 1px solid rgba(236, 72, 153, 0.15);
+      border-radius: 16px;
+    }
+    .cp-prev-qr {
+      width: auto;
+      height: auto;
+      border-radius: 16px;
+      background: rgba(8, 10, 18, 0.6);
+      border: 1px solid rgba(236, 72, 153, 0.2);
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
+    .cp-prev-qr svg,
+    .cp-prev-qr canvas {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      border-radius: 8px;
+      display: block;
+      margin: auto !important;
+      align-self: center;
+      justify-self: center;
+    }
+    .cp-prev-qr-hint {
+      font-size: 0.65rem;
+      color: rgba(148, 163, 184, 0.6);
+      text-align: center;
+    }
+    .cp-prev-link {
+      display: block;
+      padding: 0.45rem 0.65rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      font-size: 0.65rem;
+      color: rgba(148, 163, 184, 0.7);
+      word-break: break-all;
+      text-align: center;
+      max-width: 280px;
+    }
+    .cp-prev-link a {
+      color: #f9a8d4;
+      text-decoration: none;
+    }
+    .cp-prev-link a:hover {
+      text-decoration: underline;
+    }
+    .cp-prev-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .cp-prev-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+    .cp-prev-btn-primary {
+      background: linear-gradient(135deg, #ec4899, #db2777);
+      color: white;
+      box-shadow: 0 8px 20px rgba(236, 72, 153, 0.3);
+    }
+    .cp-prev-btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(236, 72, 153, 0.4);
+    }
+    .cp-prev-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .cp-prev-status-pending {
+      background: rgba(236, 72, 153, 0.1);
+      border: 1px solid rgba(236, 72, 153, 0.3);
+    }
+    .cp-prev-status-pending .cp-prev-guest-notice-text {
+      color: #f9a8d4;
+    }
+    .cp-prev-status-accepted {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .cp-prev-status-accepted .cp-prev-guest-notice-text {
+      color: #bbf7d0;
+    }
+    .cp-prev-status-rejected {
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+    }
+    .cp-prev-status-rejected .cp-prev-guest-notice-text {
+      color: #fecaca;
+    }
+    .cp-prev-guest-notice {
+      text-align: center;
+      padding: 1rem;
+      border-radius: 12px;
+    }
+    .cp-prev-guest-notice-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .cp-prev-guest-notice-text {
+      font-size: 0.85rem;
+    }
+    .cp-prev-guest-notice-sub {
+      font-size: 0.75rem;
+      color: var(--cp-text-muted);
+      margin-top: 0.35rem;
+    }
+    @media (max-width: 500px) {
+      .cp-prev-content {
+        padding: 1rem;
+      }
+      .cp-prev-card {
+        border-radius: 20px;
+      }
+      .cp-prev-hero {
+        padding: 1.25rem 1rem;
+      }
+      .cp-prev-hero-icon {
+        font-size: 2.5rem;
+      }
+      .cp-prev-hero-title {
+        font-size: 1.25rem;
+      }
+      .cp-prev-body {
+        padding: 1rem;
+      }
+      .cp-prev-info-grid {
+        grid-template-columns: 1fr;
+      }
+      .cp-prev-qr {
+        width: 160px;
+        height: 160px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="cp-background">
+    <div class="cp-glow cp-glow-left"></div>
+    <div class="cp-glow cp-glow-right"></div>
+  </div>
+
+  <main class="cp-shell cp-prev-page">
+    <header class="cp-header">
+      <div class="cp-brand">
+        <div class="cp-icon">🎟️</div>
+        <div>
+          <div class="cp-title">MyAfters <span>Prevendita</span></div>
+          <div class="cp-status"><span class="cp-dot"></span> Biglietto live</div>
+        </div>
+      </div>
+      <div class="cp-header-actions">
+        <a href="index.html" class="cp-ghost">Torna alla chat</a>
+      </div>
+    </header>
+
+    <section class="cp-prev-content">
+      <div class="cp-prev-card" id="prevenditaCard">
+        <div class="cp-prev-hero">
+          <div class="cp-prev-hero-icon" id="heroIcon">🎟️</div>
+          <div class="cp-prev-hero-title" id="heroTitle">Prevendita —</div>
+          <div class="cp-prev-hero-sub" id="heroSub">Caricamento...</div>
+          <span class="cp-status-pill" id="statusPill">—</span>
+          <div class="cp-prev-role-badge" id="roleBadge" hidden></div>
+        </div>
+
+        <div class="cp-prev-body" id="prevBody">
+          <!-- Host View -->
+          <div id="hostView" hidden>
+            <div class="cp-prev-section">
+              <div class="cp-prev-section-title">📋 Dettagli prevendita</div>
+              <div class="cp-prev-info-grid" id="infoGrid"></div>
+            </div>
+
+            <div class="cp-prev-section">
+              <div class="cp-prev-section-title">🎟️ QR Code per accesso</div>
+              <div class="cp-prev-qr-wrapper">
+                <div class="cp-prev-qr" id="qrWrapper"></div>
+                <div class="cp-prev-qr-hint">Mostra questo QR per l'ingresso con prevendita</div>
+                <div class="cp-prev-link" id="guestLinkBox"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Guest View -->
+          <div id="guestView" hidden>
+            <div class="cp-prev-section">
+              <div class="cp-prev-section-title">📋 Dettagli prevendita</div>
+              <div class="cp-prev-info-grid" id="guestInfoGrid"></div>
+            </div>
+
+            <div class="cp-prev-section cp-prev-status-pending" id="guestNoticeSection">
+              <div class="cp-prev-guest-notice" id="guestNotice">
+                <div class="cp-prev-guest-notice-icon">⏳</div>
+                <div class="cp-prev-guest-notice-text">Prevendita in attesa di conferma</div>
+                <div class="cp-prev-guest-notice-sub">Il creatore della prevendita deve confermare il tuo biglietto</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
+  <script src="prevendita.js"></script>
+</body>
+</html>

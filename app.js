@@ -447,6 +447,8 @@ const resolvePayload = (obj) => {
   if (obj.result && obj.result.type) return obj.result;
   if (obj.result && obj.result.reservation) return { type: 'reservation_card', ...obj.result };
   if (obj.reservation) return { type: 'reservation_card', ...obj };
+  if (obj.result && obj.result.prevendita) return { type: 'prevendita_card', ...obj.result };
+  if (obj.prevendita) return { type: 'prevendita_card', ...obj };
   return null;
 };
 
@@ -593,6 +595,69 @@ const buildReservationOverlayHtml = (payload) => {
     `,
     reservationUrl: hostUrl,
     tableLabel
+  };
+};
+
+const buildPrevenditaHtml = (payload) => {
+  const prevendita = payload.prevendita || {};
+  const status = payload.status || prevendita.status || 'pending';
+  const date = prevendita.event_datetime ? new Date(prevendita.event_datetime).toLocaleString('it-IT') : '—';
+  const venueInfo = prevendita.venue_id ? `Locale #${prevendita.venue_id}` : 'Locale selezionato';
+  const guestUrl = payload.guest_url || '';
+  const ticketType = prevendita.ticket_type || 'standard';
+
+  const statusLabel = {
+    pending: 'In attesa',
+    accepted: 'Confermata',
+    rejected: 'Rifiutata'
+  }[status] || status;
+
+  return {
+    html: `
+      <div class="cp-message-overlay">
+        <div class="cp-prevendita-bubble">
+          <div class="cp-bubble-arrow"></div>
+          <div class="cp-bubble-header-v2">
+            <div class="cp-bubble-icon">🎟️</div>
+            <div class="cp-bubble-title-group">
+              <div class="cp-bubble-title">Prevendita ${ticketType}</div>
+              <div class="cp-bubble-venue">${venueInfo} · ${date}</div>
+            </div>
+            <span class="cp-status-pill ${status}">${statusLabel}</span>
+          </div>
+
+          <div class="cp-bubble-body">
+            <div class="cp-bubble-info">
+              <div class="cp-bubble-row">
+                <span class="cp-bubble-label">Intestatario</span>
+                <span class="cp-bubble-value">${prevendita.user_name || 'Ospite'}</span>
+              </div>
+              <div class="cp-bubble-row">
+                <span class="cp-bubble-label">Persone</span>
+                <span class="cp-bubble-value">${prevendita.party_size || '—'}</span>
+              </div>
+              <div class="cp-bubble-row">
+                <span class="cp-bubble-label">Telefono</span>
+                <span class="cp-bubble-value">${prevendita.user_phone || '—'}</span>
+              </div>
+            </div>
+
+            <div class="cp-bubble-qr-section">
+              <div class="cp-bubble-qr" data-qr="${guestUrl}" data-qr-size="94"></div>
+              <div class="cp-bubble-qr-hint">QR per accesso prevendita</div>
+            </div>
+          </div>
+
+          <div class="cp-bubble-footer">
+            <a class="cp-bubble-manage-btn" href="${guestUrl}" target="_blank" rel="noopener">
+              Gestisci →
+            </a>
+          </div>
+        </div>
+      </div>
+    `,
+    prevenditaUrl: guestUrl,
+    ticketType
   };
 };
 
@@ -972,6 +1037,7 @@ const renderWidget = (payload) => {
   if (!payload) return null;
   if (payload.type === 'venue_grid') return buildVenueGridHtml(payload);
   if (payload.type === 'uber_embed') return buildUberEmbedHtml(payload);
+  if (payload.type === 'prevendita_card') return buildPrevenditaHtml(payload);
   return null;
 };
 
@@ -987,6 +1053,8 @@ const handleAgentResponse = (data) => {
   const widgetPayloads = [];
   let reservationOverlay = null;
   let reservationTrigger = '';
+  let prevenditaOverlay = null;
+  let prevenditaTrigger = '';
 
   if (Array.isArray(data.messages)) {
     const startIndex = Math.min(lastServerMessageCount, data.messages.length);
@@ -1010,6 +1078,11 @@ const handleAgentResponse = (data) => {
       reservationTrigger = `Tavolo ${reservationOverlay.tableLabel}`;
       return;
     }
+    if (payload.type === 'prevendita_card') {
+      prevenditaOverlay = buildPrevenditaHtml(payload);
+      prevenditaTrigger = `Prevendita ${prevenditaOverlay.ticketType}`;
+      return;
+    }
     const html = renderWidget(payload);
     if (html) messages.push({ role: 'assistant', content: html, isHtml: true });
   });
@@ -1018,16 +1091,18 @@ const handleAgentResponse = (data) => {
   const safeResponse = stripLongLinks(responseText);
   const triggerHtml = reservationOverlay
     ? `<a class="cp-overlay-trigger" href="${reservationOverlay.reservationUrl}" target="_blank" rel="noopener">${reservationTrigger}</a>`
+    : prevenditaOverlay
+    ? `<a class="cp-overlay-trigger" href="${prevenditaOverlay.prevenditaUrl}" target="_blank" rel="noopener">${prevenditaTrigger}</a>`
     : '';
   const combinedText = safeResponse
     ? `${safeResponse}${triggerHtml ? '<br/>' + triggerHtml : ''}`
     : triggerHtml;
 
-  if (combinedText || reservationOverlay) {
+  if (combinedText || reservationOverlay || prevenditaOverlay) {
     messages.push({
       role: 'assistant',
       content: combinedText || '',
-      overlayHtml: reservationOverlay ? reservationOverlay.html : null
+      overlayHtml: reservationOverlay ? reservationOverlay.html : (prevenditaOverlay ? prevenditaOverlay.html : null)
     });
   } else if (widgetPayloads.length === 0) {
     messages.push({ role: 'assistant', content: '✅ Richiesta completata.' });

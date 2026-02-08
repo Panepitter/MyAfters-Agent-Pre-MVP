@@ -37,6 +37,31 @@ def _ensure_columns(cur):
     cur.execute("CREATE INDEX IF NOT EXISTS idx_guest_requests_reservation ON reservation_guest_requests(reservation_id)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_guest_requests_status ON reservation_guest_requests(status)")
 
+    # Prevendite table
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS prevendite (
+            id SERIAL PRIMARY KEY,
+            venue_id INTEGER NOT NULL,
+            user_name TEXT NOT NULL,
+            user_phone TEXT NOT NULL,
+            party_size INTEGER NOT NULL DEFAULT 1,
+            event_datetime TIMESTAMP NOT NULL,
+            ticket_type TEXT DEFAULT 'standard',
+            notes TEXT,
+            status TEXT DEFAULT 'pending',
+            qr_code_payload TEXT,
+            host_token TEXT,
+            guest_token TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_prevendite_venue ON prevendite(venue_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_prevendite_phone ON prevendite(user_phone)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_prevendite_datetime ON prevendite(event_datetime)")
+
 
 def _serialize(row):
     if not row:
@@ -82,6 +107,20 @@ def _find_by_token(cur, token):
         """
         SELECT *
         FROM reservations
+        WHERE host_token = %s OR guest_token = %s OR qr_code_payload = %s
+        LIMIT 1
+        """,
+        (token, token, token),
+    )
+    row = cur.fetchone()
+    if row:
+        return row
+
+    # Also check prevendite table
+    cur.execute(
+        """
+        SELECT *
+        FROM prevendite
         WHERE host_token = %s OR guest_token = %s OR qr_code_payload = %s
         LIMIT 1
         """,
@@ -373,6 +412,106 @@ def index():
 @app.route("/reservation.html")
 def reservation_page():
     return send_from_directory(ROOT_DIR, "reservation.html")
+
+
+@app.route("/prevendita.html")
+def prevendita_page():
+    return send_from_directory(ROOT_DIR, "prevendita.html")
+
+
+def _build_prevendita_urls(host_token, guest_token):
+    base = _base_url()
+    host_url = f"{base}/prevendita.html?token={host_token}&role=host"
+    guest_url = f"{base}/prevendita.html?token={guest_token}&role=guest"
+    return host_url, guest_url
+
+
+def _build_prevendita_qr_url(payload):
+    import urllib.parse
+
+    base = "https://quickchart.io/qr"
+    params = {
+        "text": payload,
+        "size": 280,
+        "dark": "ec4899",
+        "light": "0b0b10",
+        "margin": 2,
+    }
+    return f"{base}?{urllib.parse.urlencode(params)}"
+
+
+def _find_prevendita_by_token(cur, token):
+    cur.execute(
+        """
+        SELECT *
+        FROM prevendite
+        WHERE host_token = %s OR guest_token = %s OR qr_code_payload = %s
+        LIMIT 1
+        """,
+        (token, token, token),
+    )
+    return cur.fetchone()
+
+
+def _serialize_prevendita(row):
+    if not row:
+        return None
+    data = dict(row)
+    for key in ("event_datetime", "created_at", "updated_at"):
+        if data.get(key) is not None:
+            try:
+                data[key] = data[key].isoformat()
+            except Exception:
+                data[key] = str(data[key])
+    return data
+
+
+@app.route("/api/prevendite/<token>", methods=["GET"])
+def get_prevendita(token):
+    conn = _get_conn()
+    cur = conn.cursor()
+    _ensure_columns(cur)
+    row = _find_prevendita_by_token(cur, token)
+
+    if not row:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Prevendita not found"}), 404
+
+    is_host_token = token == row.get("host_token")
+    host_token = row.get("host_token") or None
+    guest_token = row.get("guest_token") or None
+
+    if is_host_token and not host_token:
+        host_token = __import__('uuid').uuid4().hex
+        cur.execute("UPDATE prevendite SET host_token = %s WHERE id = %s", (host_token, row["id"]))
+        conn.commit()
+        row["host_token"] = host_token
+
+    if not guest_token:
+        guest_token = __import__('uuid').uuid4().hex
+        cur.execute("UPDATE prevendite SET guest_token = %s WHERE id = %s", (guest_token, row["id"]))
+        conn.commit()
+        row["guest_token"] = guest_token
+
+    host_url, guest_url = _build_prevendita_urls(host_token, guest_token)
+    qr_url = _build_prevendita_qr_url(guest_url)
+
+    role = "host" if is_host_token else "guest"
+
+    cur.close()
+    conn.close()
+
+    return jsonify(
+        {
+            "prevendita": _serialize_prevendita(row),
+            "status": row.get("status") or "pending",
+            "role": role,
+            "prevendita_url": host_url,
+            "guest_url": guest_url,
+            "qrcode_url": qr_url,
+        }
+    )
 
 
 @app.route("/<path:filename>")
