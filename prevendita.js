@@ -50,7 +50,7 @@ const buildGradientQr = (element, text, size = 180) => {
     height: size,
     type: 'svg',
     data: text,
-    margin: 8,
+    margin: 12,
     qrOptions: {
       errorCorrectionLevel: 'L'
     },
@@ -79,6 +79,11 @@ const buildGradientQr = (element, text, size = 180) => {
     }
   });
   qr.append(element);
+  // Force SVG/canvas to display:block to eliminate inline baseline gap (causes bottom clipping)
+  const svgEl = element.querySelector('svg');
+  if (svgEl) svgEl.style.display = 'block';
+  const canvasEl = element.querySelector('canvas');
+  if (canvasEl) canvasEl.style.display = 'block';
   return qr;
 };
 

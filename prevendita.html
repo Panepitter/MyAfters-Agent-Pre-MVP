@@ -140,15 +140,16 @@
       border-radius: 16px;
     }
     .cp-prev-qr {
-      border-radius: 16px;
+      border-radius: 12px;
       background: rgba(8, 10, 18, 0.6);
       border: 1px solid rgba(236, 72, 153, 0.2);
-      padding: 0;
+      padding: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto;
       box-sizing: border-box;
+      overflow: visible;
     }
     .cp-prev-qr-hint {
       font-size: 0.65rem;
@@ -229,8 +230,9 @@
       }
       .cp-prev-qr svg,
       .cp-prev-qr canvas {
-        width: 160px !important;
-        height: 160px !important;
+        width: 150px !important;
+        height: 150px !important;
+        display: block;
       }
     }
   </style>
@@ -308,7 +310,7 @@
     </section>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
+  <script src="qr-code-styling.js"></script>
   <script src="prevendita.js"></script>
 </body>
 </html>
