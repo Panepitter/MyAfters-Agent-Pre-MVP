@@ -50,10 +50,9 @@ const buildGradientQr = (element, text, size = 180) => {
     height: size,
     type: 'svg',
     data: text,
-    margin: 0,
+    margin: 8,
     qrOptions: {
-      errorCorrectionLevel: 'L',
-      margin: 0
+      errorCorrectionLevel: 'L'
     },
     dotsOptions: {
       type: 'dots',
