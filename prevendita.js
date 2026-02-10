@@ -10,7 +10,8 @@ const hostView = document.getElementById('hostView');
 const guestView = document.getElementById('guestView');
 const infoGrid = document.getElementById('infoGrid');
 const guestInfoGrid = document.getElementById('guestInfoGrid');
-const qrWrapper = document.getElementById('qrWrapper');
+const hostQrWrapper = document.getElementById('hostQrWrapper');
+const guestQrWrapper = document.getElementById('guestQrWrapper');
 const downloadBtn = document.getElementById('downloadBtn');
 
 // URL params
@@ -40,59 +41,52 @@ const formatDate = (value) => {
   }
 };
 
-// Build QR image URL using Google Charts API (more compatible with ITP)
-// Fallback to QuickChart if needed
-const buildQrUrl = (text, size = 180) => {
-  if (!text) return '';
-
-  // Try Google Charts API first (more reliable with ITP)
-  const base = 'https://chart.googleapis.com/chart';
-  const params = new URLSearchParams({
-    chs: `${size}x${size}`,
-    cht: 'qr',
-    chl: text,
-    choe: 'UTF-8',
-    chf: 'bg,s,00000000' // transparent background
-  });
-  return `${base}?${params.toString()}`;
-};
-
-// Fallback function to build QR with QuickChart (pink gradient)
-const buildQrUrlPink = (text, size = 180) => {
-  if (!text) return '';
-  const base = 'https://api.qrserver.com/v1/create-qr-code/';
-  const params = new URLSearchParams({
-    size: `${size}x${size}`,
-    data: text,
-    color: 'EC4899',
-    bgcolor: '0B0B10',
-    margin: '2'
-  });
-  return `${base}?${params.toString()}`;
-};
-
-// Render QR code using img tag with Google Charts API
-const renderQrCode = (element, text, size = 180) => {
-  if (!element || !text) return false;
-
+// Build styled QR code using QRCodeStyling (same as chat widget)
+const buildGradientQr = (element, text, size = 180) => {
+  if (!window.QRCodeStyling || !element || !text) return null;
   element.innerHTML = '';
-  element.style.width = `${size}px`;
-  element.style.height = `${size}px`;
+  const qr = new QRCodeStyling({
+    width: size,
+    height: size,
+    type: 'svg',
+    data: text,
+    margin: 0,
+    qrOptions: {
+      errorCorrectionLevel: 'L',
+      margin: 0
+    },
+    dotsOptions: {
+      type: 'dots',
+      gradient: {
+        type: 'linear',
+        rotation: 2.2,
+        colorStops: [
+          { offset: 0, color: '#6366f1' },
+          { offset: 0.6, color: '#4f46e5' },
+          { offset: 1, color: '#7c3aed' }
+        ]
+      }
+    },
+    cornersSquareOptions: {
+      type: 'extra-rounded',
+      color: '#6366f1'
+    },
+    cornersDotOptions: {
+      type: 'dot',
+      color: '#7c3aed'
+    },
+    backgroundOptions: {
+      color: 'transparent'
+    }
+  });
+  qr.append(element);
+  return qr;
+};
 
-  const img = document.createElement('img');
-  img.src = buildQrUrl(text, size);
-  img.style.width = '100%';
-  img.style.height = '100%';
-  img.style.objectFit = 'contain';
-  img.style.borderRadius = '8px';
-  img.alt = 'QR Code';
-  img.onerror = () => {
-    // Fallback to QR Server if Google Charts fails
-    img.src = buildQrUrlPink(text, size);
-  };
-
-  element.appendChild(img);
-  return true;
+// Render QR code in a DOM element
+const renderQrCode = (element, text, size = 180) => {
+  if (!element || !text) return null;
+  return buildGradientQr(element, text, size);
 };
 
 const renderInfoGrid = (container, prevendita) => {
@@ -146,7 +140,7 @@ const renderHostView = (data) => {
 
   // QR Code
   if (data.guest_url) {
-    renderQrCode(qrWrapper, data.guest_url, 180);
+    renderQrCode(hostQrWrapper, data.guest_url, 180);
   }
 
   clearIntervals();
@@ -176,7 +170,7 @@ const renderGuestView = (data) => {
 
   // QR Code for guest
   if (data.guest_url) {
-    renderQrCode(qrWrapper, data.guest_url, 180);
+    renderQrCode(guestQrWrapper, data.guest_url, 180);
   }
 
   clearIntervals();
@@ -220,6 +214,45 @@ const fetchPrevendita = async () => {
   }
 };
 
+// Convert QRCodeStyling SVG to a PNG data URL via canvas
+const qrToDataUrl = (text, size = 300) => {
+  return new Promise((resolve, reject) => {
+    if (!window.QRCodeStyling || !text) {
+      reject(new Error('QRCodeStyling not available'));
+      return;
+    }
+    const qr = new QRCodeStyling({
+      width: size,
+      height: size,
+      type: 'canvas',
+      data: text,
+      margin: 8,
+      qrOptions: { errorCorrectionLevel: 'L' },
+      dotsOptions: {
+        type: 'dots',
+        gradient: {
+          type: 'linear',
+          rotation: 2.2,
+          colorStops: [
+            { offset: 0, color: '#6366f1' },
+            { offset: 0.6, color: '#4f46e5' },
+            { offset: 1, color: '#7c3aed' }
+          ]
+        }
+      },
+      cornersSquareOptions: { type: 'extra-rounded', color: '#6366f1' },
+      cornersDotOptions: { type: 'dot', color: '#7c3aed' },
+      backgroundOptions: { color: '#0f172a' }
+    });
+    qr.getRawData('png').then((blob) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    }).catch(reject);
+  });
+};
+
 // PDF Download functionality
 const downloadTicketPDF = async () => {
   if (!currentData || !currentData.prevendita) {
@@ -232,6 +265,7 @@ const downloadTicketPDF = async () => {
 
   // Load jsPDF
   const loadScript = (src) => new Promise((resolve, reject) => {
+    if (window.jspdf) { resolve(); return; }
     const script = document.createElement('script');
     script.src = src;
     script.onload = resolve;
@@ -242,81 +276,81 @@ const downloadTicketPDF = async () => {
   try {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
 
+    // Generate QR as data URL first
+    const qrText = guestUrl || (prevendita.guest_token ? `${window.location.origin}/prevendita.html?token=${prevendita.guest_token}` : '');
+    let qrDataUrl = null;
+    if (qrText) {
+      try {
+        qrDataUrl = await qrToDataUrl(qrText, 300);
+      } catch (e) {
+        console.warn('QR generation failed for PDF:', e);
+      }
+    }
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [54, 95] // Small ticket size
+      format: [54, 95]
     });
 
-    // Colors - Pink gradient theme matching the widget
-    const primary = { r: 236, g: 72, b: 153 }; // pink-500
-    const secondary = { r: 219, g: 39, b: 119 }; // pink-600
-    const dark = { r: 15, g: 23, b: 42 }; // dark bg
+    const primary = { r: 99, g: 102, b: 241 }; // indigo-500 matching QR gradient
+    const dark = { r: 15, g: 23, b: 42 };
+
+    // Full dark background
+    doc.setFillColor(dark.r, dark.g, dark.b);
+    doc.rect(0, 0, 54, 95, 'F');
 
     // Header
-    doc.setFillColor(dark.r, dark.g, dark.b);
-    doc.rect(0, 0, 54, 25, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.text('MyAfters', 27, 8, { align: 'center' });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text('Prevendita Biglietto', 27, 12, { align: 'center' });
+    doc.text('Prevendita Biglietto', 27, 13, { align: 'center' });
 
     // Decorative line
     doc.setDrawColor(primary.r, primary.g, primary.b);
     doc.setLineWidth(0.5);
-    doc.line(4, 18, 50, 18);
-
-    // Ticket Icon
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(20);
-    doc.setTextColor(primary.r, primary.g, primary.b);
-    doc.text('🎟️', 27, 22, { align: 'center' });
+    doc.line(4, 16, 50, 16);
 
     // Info Section
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(8);
 
-    let yPos = 32;
+    let yPos = 22;
     doc.setFont('helvetica', 'bold');
     doc.text(`Tipo: ${prevendita.ticket_type ? prevendita.ticket_type.charAt(0).toUpperCase() + prevendita.ticket_type.slice(1) : 'Standard'}`, 4, yPos);
-    yPos += 6;
+    yPos += 5;
 
     doc.setFont('helvetica', 'normal');
     doc.text(`Intestatario: ${prevendita.user_name || 'Ospite'}`, 4, yPos);
-    yPos += 5;
+    yPos += 4.5;
     doc.text(`Persone: ${prevendita.party_size || 1}`, 4, yPos);
-    yPos += 5;
+    yPos += 4.5;
 
     const dateStr = formatDate(prevendita.event_datetime);
     doc.text(`Data: ${dateStr}`, 4, yPos);
-    yPos += 5;
+    yPos += 4.5;
     doc.text(`Locale: #${prevendita.venue_id || '—'}`, 4, yPos);
-    yPos += 5;
+    yPos += 4.5;
     doc.text(`ID: #${prevendita.id}`, 4, yPos);
 
-    // Generate QR code with pink gradient
-    const qrY = yPos + 8;
-    const qrWidth = 30;
-    const qrHeight = 30;
-
-    // Build QR URL - use QR Server for better compatibility
-    const qrText = guestUrl || (prevendita.guest_token ? `${window.location.origin}/prevendita.html?token=${prevendita.guest_token}` : '');
-    const qrImgUrl = buildQrUrlPink(qrText, 120);
-
-    // Add QR image to PDF
-    doc.addImage(qrImgUrl, 'PNG', 12, qrY, qrWidth, qrHeight);
+    // QR Code
+    const qrY = yPos + 5;
+    const qrSize = 32;
+    if (qrDataUrl) {
+      doc.addImage(qrDataUrl, 'PNG', (54 - qrSize) / 2, qrY, qrSize, qrSize);
+    }
 
     // Footer
     doc.setFillColor(primary.r, primary.g, primary.b);
-    doc.rect(0, qrY + 38, 54, 8, 'F');
+    doc.rect(0, 87, 54, 8, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
-    doc.text('Scansiona per ingresso', 27, qrY + 43, { align: 'center' });
+    doc.text('Scansiona per ingresso', 27, 92, { align: 'center' });
 
     // Download
     doc.save(`myafters_prevendita_${prevendita.id}.pdf`);
