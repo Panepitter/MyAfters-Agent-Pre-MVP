@@ -52,6 +52,43 @@ const profileState = {
 
 sessionIdEl.textContent = sessionId;
 
+const saveSession = () => {
+  try {
+    localStorage.setItem('myafters_chat_session', JSON.stringify({
+      messages,
+      sessionId,
+      lastServerMessageCount,
+      hasInjectedProfile
+    }));
+  } catch (err) {
+    // ignore quota errors
+  }
+};
+
+const loadSession = () => {
+  try {
+    const saved = localStorage.getItem('myafters_chat_session');
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    if (!parsed || typeof parsed !== 'object') return;
+    if (Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+      messages = parsed.messages;
+    }
+    if (parsed.sessionId) {
+      sessionId = parsed.sessionId;
+      sessionIdEl.textContent = sessionId;
+    }
+    if (typeof parsed.lastServerMessageCount === 'number') {
+      lastServerMessageCount = parsed.lastServerMessageCount;
+    }
+    if (typeof parsed.hasInjectedProfile === 'boolean') {
+      hasInjectedProfile = parsed.hasInjectedProfile;
+    }
+  } catch (err) {
+    // ignore localStorage errors
+  }
+};
+
 const renderMarkdown = (text) => {
   if (window.marked && typeof window.marked.parse === 'function') {
     return window.marked.parse(text);
@@ -111,9 +148,11 @@ const renderMessages = () => {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 
   enhanceQrCodes();
-  
+
   // Initialize Uber widgets
   document.querySelectorAll('.cp-uber-widget').forEach(initUberWidget);
+
+  saveSession();
 };
 
 const DEFAULT_CENTER = { lat: 45.4642, lng: 9.19 };
@@ -1302,6 +1341,7 @@ clearBtn.addEventListener('click', () => {
   lastVenuePayload = null;
   lastServerMessageCount = 0;
   hasInjectedProfile = false;
+  localStorage.removeItem('myafters_chat_session');
   renderMessages();
 });
 
@@ -1357,6 +1397,7 @@ quickButtons.forEach((btn) => {
 });
 
 loadProfile();
+loadSession();
 initMap();
 updateProfileSummary();
 setActiveTab('chat');

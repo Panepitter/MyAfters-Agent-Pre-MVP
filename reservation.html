@@ -140,30 +140,27 @@
       border-radius: 16px;
     }
     .cp-res-qr {
-      width: auto;
-      height: auto;
+      width: 196px;
+      height: 196px;
       border-radius: 16px;
       background: rgba(8, 10, 18, 0.6);
       border: 1px solid rgba(129, 140, 248, 0.2);
-      padding: 0;
+      padding: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
+      overflow: visible;
       margin: 0 auto;
       box-sizing: border-box;
     }
     .cp-res-qr svg,
     .cp-res-qr canvas {
-      width: 100% !important;
-      height: 100% !important;
-      max-width: 100% !important;
-      max-height: 100% !important;
-      border-radius: 8px;
+      width: 180px !important;
+      height: 180px !important;
+      max-width: 180px !important;
+      max-height: 180px !important;
       display: block;
       margin: auto !important;
-      align-self: center;
-      justify-self: center;
     }
     .cp-res-qr-hint {
       font-size: 0.65rem;
@@ -369,8 +366,15 @@
         grid-template-columns: 1fr;
       }
       .cp-res-qr {
-        width: 160px;
-        height: 160px;
+        width: 176px;
+        height: 176px;
+      }
+      .cp-res-qr svg,
+      .cp-res-qr canvas {
+        width: 160px !important;
+        height: 160px !important;
+        max-width: 160px !important;
+        max-height: 160px !important;
       }
       .cp-res-unlock-form {
         flex-direction: column;
@@ -394,7 +398,7 @@
         </div>
       </div>
       <div class="cp-header-actions">
-        <a href="index.html" class="cp-ghost">Torna alla chat</a>
+        <a href="index.html" class="cp-ghost" onclick="if(history.length>1){event.preventDefault();history.back()}">Torna alla chat</a>
       </div>
     </header>
 
