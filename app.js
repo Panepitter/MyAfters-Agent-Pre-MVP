@@ -1185,7 +1185,7 @@ const sendMessage = async (text) => {
     if (typingEl && typingEl.parentElement) typingEl.parentElement.remove();
 
     streamBubble = document.createElement('div');
-    streamBubble.className = 'cp-message assistant streaming';
+    streamBubble.className = 'cp-message assistant';
     messagesEl.appendChild(streamBubble);
 
     const reader = resp.body.getReader();
@@ -1220,13 +1220,7 @@ const sendMessage = async (text) => {
         }
 
         if (evt.type === 'tool_call') {
-          // Show tool usage indicator in stream bubble
-          const toolTag = `<div class="cp-tool-indicator">⚙️ ${evt.name || 'tool'}...</div>`;
-          if (streamBubble) {
-            const existing = streamBubble.innerHTML;
-            streamBubble.innerHTML = existing + toolTag;
-            messagesEl.scrollTop = messagesEl.scrollHeight;
-          }
+          // Tool calls processed silently — results handled via tool_result
         }
 
         if (evt.type === 'tool_result') {

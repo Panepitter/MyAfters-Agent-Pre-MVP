@@ -410,24 +410,6 @@ textarea:focus {
   50% { opacity: 1; transform: translateY(-2px); }
 }
 
-/* Streaming bubble */
-.cp-message.assistant.streaming {
-  min-height: 24px;
-  border-left: 2px solid var(--cp-primary);
-  padding-left: 14px;
-}
-
-.cp-tool-indicator {
-  display: inline-block;
-  font-size: 0.78rem;
-  color: var(--cp-text-muted);
-  margin-top: 8px;
-  padding: 3px 10px;
-  background: rgba(99, 102, 241, 0.08);
-  border-radius: 8px;
-  animation: pulse 1.6s infinite ease-in-out;
-}
-
 .cp-message.widget {
   max-width: 100%;
   width: 100%;
