@@ -510,7 +510,7 @@ const buildVenueGridHtml = (payload) => {
     return badges;
   };
 
-  const cards = venues.map((venue) => {
+  const cards = venues.map((venue, cardIndex) => {
     const tags = (venue.music_genres || []).slice(0, 3).map((tag) => `<span class="cp-tag">${tag}</span>`).join('');
     const distance = venue.distance_km !== null && venue.distance_km !== undefined ? `${venue.distance_km} km` : 'Distanza n/d';
     const score = venue.score ? `Score ${venue.score}` : '';
@@ -520,7 +520,7 @@ const buildVenueGridHtml = (payload) => {
       .map((badge) => `<span class="cp-badge ${badge.className}">${badge.label}</span>`)
       .join('');
     return `
-      <div class="cp-venue-card">
+      <div class="cp-venue-card" style="--card-index: ${cardIndex}">
         <div class="cp-venue-image" style="background-image:url('${imageUrl}')"></div>
         <div class="cp-venue-body">
           <div class="cp-venue-title">${venue.name}</div>
@@ -1096,6 +1096,8 @@ const finalizeStream = (assistantText, widgetPayloads) => {
     if (payload.type === 'venue_grid') {
       lastVenuePayload = payload;
     }
+    // Skip widgets already rendered inline during streaming
+    if (payload._rendered) return;
     if (payload.type === 'reservation_card') {
       reservationOverlay = buildReservationOverlayHtml(payload);
       reservationTrigger = `Tavolo ${reservationOverlay.tableLabel}`;
@@ -1126,6 +1128,8 @@ const finalizeStream = (assistantText, widgetPayloads) => {
       content: combinedText || '',
       overlayHtml: reservationOverlay ? reservationOverlay.html : (prevenditaOverlay ? prevenditaOverlay.html : null)
     });
+  } else if (widgetPayloads.every(p => p._rendered) && !assistantText.trim()) {
+    // All widgets rendered inline, no extra text — nothing to add
   } else if (widgetPayloads.length === 0 && !assistantText.trim()) {
     messages.push({ role: 'assistant', content: '✅ Richiesta completata.' });
   }
@@ -1224,9 +1228,45 @@ const sendMessage = async (text) => {
         }
 
         if (evt.type === 'tool_result') {
-          const parsed = resolvePayload(parseToolPayload(evt.result));
-          if (parsed) widgetPayloads.push(parsed);
-          // Clear tool indicator — next token event will overwrite
+          // evt.result is already a parsed object from SSE JSON
+          let payload = evt.result;
+          if (typeof payload === 'string') {
+            payload = parseToolPayload(payload);
+          }
+          const resolved = resolvePayload(payload);
+          if (resolved) {
+            widgetPayloads.push(resolved);
+
+            // Render venue_grid and uber_embed inline during streaming
+            if (resolved.type === 'venue_grid' || resolved.type === 'uber_embed') {
+              if (resolved.type === 'venue_grid') lastVenuePayload = resolved;
+              const widgetHtml = renderWidget(resolved);
+              if (widgetHtml && streamBubble) {
+                // Convert current streaming text to a permanent bubble
+                if (assistantText.trim()) {
+                  const textBubble = document.createElement('div');
+                  textBubble.className = 'cp-message assistant';
+                  textBubble.innerHTML = renderMarkdown(stripLongLinks(assistantText.trim()));
+                  messagesEl.insertBefore(textBubble, streamBubble);
+                  messages.push({ role: 'assistant', content: stripLongLinks(assistantText.trim()) });
+                }
+                // Insert widget before stream bubble
+                const widgetEl = document.createElement('div');
+                widgetEl.className = 'cp-message assistant widget';
+                widgetEl.innerHTML = widgetHtml;
+                messagesEl.insertBefore(widgetEl, streamBubble);
+                messages.push({ role: 'assistant', content: widgetHtml, isHtml: true });
+                // Reset stream bubble for next turn text
+                assistantText = '';
+                streamBubble.innerHTML = '';
+                // Activate QR codes and Uber widgets
+                enhanceQrCodes();
+                widgetEl.querySelectorAll('.cp-uber-widget').forEach(initUberWidget);
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+                resolved._rendered = true;
+              }
+            }
+          }
         }
 
         if (evt.type === 'error') {
