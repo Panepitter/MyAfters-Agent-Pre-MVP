@@ -13,6 +13,7 @@ DATABASE_URL = os.getenv("MYAFTERS_DB_URL") or "postgresql://postgres:fuGyBvVPHo
 # Agent-Z platform connection
 AGENT_API_BASE = os.getenv("AGENT_API_BASE", "http://46.225.121.175")
 AGENT_ID = os.getenv("AGENT_ID", "agent_014bbeca")
+AGENT_API_KEY = os.getenv("AGENT_API_KEY", "")
 
 app = Flask(__name__)
 CORS(app)
@@ -415,14 +416,18 @@ def chat_proxy():
     payload = request.get_json(silent=True) or {}
     url = f"{AGENT_API_BASE}/api/agents/{AGENT_ID}/chat"
 
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+    }
+    if AGENT_API_KEY:
+        headers["X-Agent-API-Key"] = AGENT_API_KEY
+
     try:
         upstream = http_requests.post(
             url,
             json=payload,
-            headers={
-                "Content-Type": "application/json",
-                "Accept": "text/event-stream",
-            },
+            headers=headers,
             stream=True,
             timeout=(10, 120),
         )
