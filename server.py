@@ -1,13 +1,18 @@
 import os
 from pathlib import Path
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
 import psycopg
 from psycopg.rows import dict_row
+import requests as http_requests
 
 ROOT_DIR = Path(__file__).resolve().parent
 DATABASE_URL = os.getenv("MYAFTERS_DB_URL") or "postgresql://postgres:fuGyBvVPHoWRkWGUlsPaJbUedICNjpWm@shinkansen.proxy.rlwy.net:45313/railway"
+
+# Agent-Z platform connection
+AGENT_API_BASE = os.getenv("AGENT_API_BASE", "http://46.225.121.175")
+AGENT_ID = os.getenv("AGENT_ID", "agent_014bbeca")
 
 app = Flask(__name__)
 CORS(app)
@@ -401,6 +406,51 @@ def reject_reservation(token):
             "qrcode_url": _build_qr_url(guest_url),
             "host_passcode": updated.get("host_passcode"),
         }
+    )
+
+
+@app.route("/api/chat", methods=["POST"])
+def chat_proxy():
+    """Proxy chat requests to Agent-Z platform with SSE streaming."""
+    payload = request.get_json(silent=True) or {}
+    url = f"{AGENT_API_BASE}/api/agents/{AGENT_ID}/chat"
+
+    try:
+        upstream = http_requests.post(
+            url,
+            json=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "text/event-stream",
+            },
+            stream=True,
+            timeout=(10, 120),
+        )
+    except http_requests.RequestException as e:
+        return jsonify({"error": f"Agent unreachable: {e}"}), 502
+
+    if upstream.status_code != 200:
+        try:
+            body = upstream.json()
+        except Exception:
+            body = {"error": upstream.text[:500]}
+        return jsonify(body), upstream.status_code
+
+    def relay():
+        try:
+            for chunk in upstream.iter_content(chunk_size=None):
+                if chunk:
+                    yield chunk
+        finally:
+            upstream.close()
+
+    return Response(
+        relay(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

@@ -1,5 +1,5 @@
-const API_BASE = 'https://web-production-f8a2c.up.railway.app';
-const AGENT_ID = 'agent_ae5b6a14';
+// Chat proxied through local server.py → agent-z-platform
+const CHAT_ENDPOINT = '/api/chat';
 
 const messagesEl = document.getElementById('messages');
 const inputEl = document.getElementById('userInput');
@@ -31,9 +31,9 @@ const saveProfileBtn = document.getElementById('saveProfileBtn');
 
 let messages = [];
 let isThinking = false;
-let sessionId = `ui-session-${Date.now()}`;
+let sessionId = null;
 let lastVenuePayload = null;
-let lastServerMessageCount = 0;
+// lastServerMessageCount removed — no longer needed with SSE streaming
 let hasInjectedProfile = false;
 let mapInstance = null;
 let mapMarker = null;
@@ -50,14 +50,13 @@ const profileState = {
   partySize: null
 };
 
-sessionIdEl.textContent = sessionId;
+sessionIdEl.textContent = sessionId || 'Nuova sessione';
 
 const saveSession = () => {
   try {
     localStorage.setItem('myafters_chat_session', JSON.stringify({
       messages,
       sessionId,
-      lastServerMessageCount,
       hasInjectedProfile
     }));
   } catch (err) {
@@ -77,9 +76,6 @@ const loadSession = () => {
     if (parsed.sessionId) {
       sessionId = parsed.sessionId;
       sessionIdEl.textContent = sessionId;
-    }
-    if (typeof parsed.lastServerMessageCount === 'number') {
-      lastServerMessageCount = parsed.lastServerMessageCount;
     }
     if (typeof parsed.hasInjectedProfile === 'boolean') {
       hasInjectedProfile = parsed.hasInjectedProfile;
@@ -1088,25 +1084,13 @@ const stripLongLinks = (text) => {
   });
 };
 
-const handleAgentResponse = (data) => {
-  const widgetPayloads = [];
+let abortController = null;
+
+const finalizeStream = (assistantText, widgetPayloads) => {
   let reservationOverlay = null;
   let reservationTrigger = '';
   let prevenditaOverlay = null;
   let prevenditaTrigger = '';
-
-  if (Array.isArray(data.messages)) {
-    const startIndex = Math.min(lastServerMessageCount, data.messages.length);
-    const newMessages = data.messages.slice(startIndex);
-    newMessages.forEach((msg) => {
-      if (msg.role === 'tool') {
-        const raw = msg.content || '';
-        const parsed = resolvePayload(parseToolPayload(raw));
-        if (parsed) widgetPayloads.push(parsed);
-      }
-    });
-    lastServerMessageCount = data.messages.length;
-  }
 
   widgetPayloads.forEach((payload) => {
     if (payload.type === 'venue_grid') {
@@ -1126,8 +1110,7 @@ const handleAgentResponse = (data) => {
     if (html) messages.push({ role: 'assistant', content: html, isHtml: true });
   });
 
-  const responseText = typeof data.response === 'string' ? data.response.trim() : '';
-  const safeResponse = stripLongLinks(responseText);
+  const safeResponse = stripLongLinks(assistantText.trim());
   const triggerHtml = reservationOverlay
     ? `<a class="cp-overlay-trigger" href="${reservationOverlay.reservationUrl}" target="_blank" rel="noopener">${reservationTrigger}</a>`
     : prevenditaOverlay
@@ -1143,7 +1126,7 @@ const handleAgentResponse = (data) => {
       content: combinedText || '',
       overlayHtml: reservationOverlay ? reservationOverlay.html : (prevenditaOverlay ? prevenditaOverlay.html : null)
     });
-  } else if (widgetPayloads.length === 0) {
+  } else if (widgetPayloads.length === 0 && !assistantText.trim()) {
     messages.push({ role: 'assistant', content: '✅ Richiesta completata.' });
   }
 };
@@ -1170,22 +1153,110 @@ const sendMessage = async (text) => {
   isThinking = true;
   renderMessages();
 
+  // Prepare streaming state
+  let assistantText = '';
+  const widgetPayloads = [];
+  let streamBubble = null;
+
+  abortController = new AbortController();
+
   try {
-    const resp = await fetch(`${API_BASE}/api/agents/${AGENT_ID}/chat`, {
+    const resp = await fetch(CHAT_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: outboundMessage, session_id: sessionId })
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+      },
+      body: JSON.stringify({ message: outboundMessage, session_id: sessionId }),
+      signal: abortController.signal,
     });
 
-    const data = await resp.json();
-    if (!resp.ok || data.error) {
-      messages.push({ role: 'assistant', content: `⚠️ Errore: ${data.error || 'Impossibile completare la richiesta.'}` });
-    } else {
-      handleAgentResponse(data);
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      messages.push({ role: 'assistant', content: `⚠️ Errore: ${err.error || 'Impossibile completare la richiesta.'}` });
+      isThinking = false;
+      renderMessages();
+      return;
+    }
+
+    // Switch from thinking dots to streaming bubble
+    isThinking = false;
+    const typingEl = messagesEl.querySelector('.cp-typing');
+    if (typingEl && typingEl.parentElement) typingEl.parentElement.remove();
+
+    streamBubble = document.createElement('div');
+    streamBubble.className = 'cp-message assistant streaming';
+    messagesEl.appendChild(streamBubble);
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let evt;
+        try { evt = JSON.parse(line.slice(6)); } catch (e) { continue; }
+
+        if (evt.type === 'session' && evt.session_id) {
+          sessionId = evt.session_id;
+          sessionIdEl.textContent = sessionId;
+          saveSession();
+        }
+
+        if (evt.type === 'token' && evt.content) {
+          assistantText += evt.content;
+          if (streamBubble) {
+            streamBubble.innerHTML = renderMarkdown(assistantText);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+          }
+        }
+
+        if (evt.type === 'tool_call') {
+          // Show tool usage indicator in stream bubble
+          const toolTag = `<div class="cp-tool-indicator">⚙️ ${evt.name || 'tool'}...</div>`;
+          if (streamBubble) {
+            const existing = streamBubble.innerHTML;
+            streamBubble.innerHTML = existing + toolTag;
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+          }
+        }
+
+        if (evt.type === 'tool_result') {
+          const parsed = resolvePayload(parseToolPayload(evt.result));
+          if (parsed) widgetPayloads.push(parsed);
+          // Clear tool indicator — next token event will overwrite
+        }
+
+        if (evt.type === 'error') {
+          assistantText += `\n⚠️ ${evt.error}`;
+          if (streamBubble) {
+            streamBubble.innerHTML = renderMarkdown(assistantText);
+          }
+        }
+      }
     }
   } catch (err) {
-    messages.push({ role: 'assistant', content: '⚠️ Errore di connessione.' });
+    if (err.name === 'AbortError') {
+      // User stopped
+      if (assistantText) assistantText += '\n\n*(interrotto)*';
+    } else {
+      messages.push({ role: 'assistant', content: '⚠️ Errore di connessione.' });
+    }
   } finally {
+    abortController = null;
+
+    // Remove streaming bubble, finalize into messages array
+    if (streamBubble) streamBubble.remove();
+    finalizeStream(assistantText, widgetPayloads);
+
     isThinking = false;
     renderMessages();
   }
@@ -1336,10 +1407,9 @@ sendBtn.addEventListener('click', () => sendMessage(inputEl.value));
 
 clearBtn.addEventListener('click', () => {
   messages = [];
-  sessionId = `ui-session-${Date.now()}`;
-  sessionIdEl.textContent = sessionId;
+  sessionId = null;
+  sessionIdEl.textContent = 'Nuova sessione';
   lastVenuePayload = null;
-  lastServerMessageCount = 0;
   hasInjectedProfile = false;
   localStorage.removeItem('myafters_chat_session');
   renderMessages();
