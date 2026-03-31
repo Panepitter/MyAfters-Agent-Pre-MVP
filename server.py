@@ -84,7 +84,8 @@ def _serialize(row):
 
 def _base_url():
     host = request.host_url.rstrip("/")
-    return host
+    prefix = os.getenv("BASE_PATH", "")
+    return f"{host}{prefix}"
 
 
 def _build_urls(host_token, guest_token):

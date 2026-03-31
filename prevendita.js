@@ -1,4 +1,4 @@
-const API_BASE = window.location.origin;
+const API_BASE = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
 
 // DOM Elements
 const heroIcon = document.getElementById('heroIcon');

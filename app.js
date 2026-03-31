@@ -1,5 +1,6 @@
 // Chat proxied through local server.py → agent-z-platform
-const CHAT_ENDPOINT = '/api/chat';
+const BASE_PATH = window.location.pathname.replace(/\/[^/]*$/, '');
+const CHAT_ENDPOINT = `${BASE_PATH}/api/chat`;
 
 const messagesEl = document.getElementById('messages');
 const inputEl = document.getElementById('userInput');
