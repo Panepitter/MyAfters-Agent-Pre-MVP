@@ -11,7 +11,7 @@ ROOT_DIR = Path(__file__).resolve().parent
 DATABASE_URL = os.getenv("MYAFTERS_DB_URL") or "postgresql://postgres:fuGyBvVPHoWRkWGUlsPaJbUedICNjpWm@shinkansen.proxy.rlwy.net:45313/railway"
 
 # Agent-Z platform connection
-AGENT_API_BASE = os.getenv("AGENT_API_BASE", "http://46.225.121.175")
+AGENT_API_BASE = os.getenv("AGENT_API_BASE", "https://agent-z-platform.com")
 AGENT_ID = os.getenv("AGENT_ID", "agent_014bbeca")
 AGENT_API_KEY = os.getenv("AGENT_API_KEY", "")
 
